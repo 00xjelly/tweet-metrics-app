@@ -1,45 +1,42 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../db';
-import { sql } from 'drizzle-orm';
+import { analyticsRequests, tweets } from '../../../db/schema';
 
-export async function GET() {
+export const runtime = 'edge'; // Explicitly set runtime to prevent static generation
+
+export async function GET(request: NextRequest) {
   try {
-    await db.execute(sql`DROP TABLE IF EXISTS tweets CASCADE`);
-    await db.execute(sql`DROP TABLE IF EXISTS analytics_requests CASCADE`);
-
-    await db.execute(sql`
-      CREATE TABLE analytics_requests (
-        id SERIAL PRIMARY KEY,
-        urls JSONB NOT NULL,
-        status JSONB NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    // Create tables if they don't exist
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS analytics_requests (
+        id TEXT PRIMARY KEY,
+        url TEXT,
+        status JSONB,
+        createdAt TEXT,
+        updatedAt TEXT
       )
     `);
 
-    await db.execute(sql`
-      CREATE TABLE tweets (
-        id SERIAL PRIMARY KEY,
-        tweet_id TEXT NOT NULL UNIQUE,
-        author_username TEXT,
-        content TEXT,
-        created_at TIMESTAMP NOT NULL,
-        metrics JSONB,
-        last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
-        request_id INTEGER REFERENCES analytics_requests(id)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS tweets (
+        id TEXT PRIMARY KEY,
+        url TEXT,
+        data JSONB,
+        createdAt TEXT,
+        updatedAt TEXT
       )
     `);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Migration completed successfully'
-    });
-
+    return NextResponse.json({ 
+      message: 'Database tables created successfully',
+      status: 'success'
+    }, { status: 200 });
   } catch (error) {
-    console.error('Migration failed:', error);
-    return NextResponse.json(
-      { success: false, error: 'Migration failed' },
-      { status: 500 }
-    );
+    console.error('Migration error:', error);
+    return NextResponse.json({ 
+      message: 'Database migration failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      status: 'error'
+    }, { status: 500 });
   }
 }
