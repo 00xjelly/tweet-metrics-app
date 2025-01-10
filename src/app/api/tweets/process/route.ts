@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { analyticsRequests, tweets } from '@/db/schema';
+import { db } from '../../../../db';
+import { analyticsRequests, tweets } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
-import { getTweetData } from '@/lib/twitter/scraper';
+import { getTweetData } from '../../../../lib/twitter/scraper';
 
 export const runtime = 'edge';
 
@@ -119,6 +119,7 @@ export async function POST(
       .set({
         status: {
           stage: 'failed',
+          progress: 0,
           error: error instanceof Error ? error.message : 'Unknown error',
           completedAt: new Date().toISOString()
         },
