@@ -1,31 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../db';
-import { analyticsRequests, tweets } from '../../../db/schema';
+import { sql } from '@vercel/postgres';
 
-export const runtime = 'edge'; // Explicitly set runtime to prevent static generation
+export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   try {
     // Create tables if they don't exist
-    await db.run(`
+    await sql`
       CREATE TABLE IF NOT EXISTS analytics_requests (
         id TEXT PRIMARY KEY,
         url TEXT,
         status JSONB,
         createdAt TEXT,
         updatedAt TEXT
-      )
-    `);
+      );
 
-    await db.run(`
       CREATE TABLE IF NOT EXISTS tweets (
         id TEXT PRIMARY KEY,
         url TEXT,
         data JSONB,
         createdAt TEXT,
         updatedAt TEXT
-      )
-    `);
+      );
+    `;
 
     return NextResponse.json({ 
       message: 'Database tables created successfully',
