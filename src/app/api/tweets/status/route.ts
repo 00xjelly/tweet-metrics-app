@@ -5,7 +5,6 @@ export const runtime = 'edge';
 
 export async function GET(request: Request) {
   try {
-    // Correctly extract the ID from URL in an Edge-compatible way
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -48,16 +47,17 @@ export async function GET(request: Request) {
     let tweets = [];
     if (analyticsRequest.status?.stage === 'completed') {
       console.log('Fetching associated tweets');
+      // Query based on the analytics request ID instead of URL
       const { data: tweetData, error: tweetsError } = await supabase
         .from('tweets')
         .select('*')
-        .eq('url', analyticsRequest.url);
+        .eq('analytics_request_id', id); // We need to add this column to our tweets table
 
       if (tweetsError) {
         console.error('Error fetching tweets:', tweetsError);
       } else {
         tweets = tweetData;
-        console.log('Found tweets:', tweets.length);
+        console.log('Found tweets:', tweetData);
       }
     }
 
