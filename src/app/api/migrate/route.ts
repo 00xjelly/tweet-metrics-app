@@ -6,7 +6,7 @@ export const runtime = 'edge';
 export async function GET(request: NextRequest) {
   try {
     // Create analytics_requests table
-    await supabase.from('analytics_requests').create_table({
+    await supabase.from('analytics_requests').createTable({
       id: 'text PRIMARY KEY',
       url: 'text',
       status: 'jsonb',
@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Create tweets table
-    await supabase.from('tweets').create_table({
-      id: 'text PRIMARY KEY', 
+    await supabase.from('tweets').createTable({
+      id: 'text PRIMARY KEY',
       url: 'text',
       data: 'jsonb',
       createdAt: 'text',
