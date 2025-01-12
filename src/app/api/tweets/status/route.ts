@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../db';
-import { analyticsRequests, tweets } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { supabase } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { searchParams }: { searchParams: { get: (key: string) => string | null } }
 ) {
   try {
-    const id = parseInt(searchParams.get('id') || '');
+    const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json(
@@ -17,26 +15,38 @@ export async function GET(
       );
     }
 
-    const request = await db.query.analyticsRequests.findFirst({
-      where: eq(analyticsRequests.id, id)
-    });
+    // Get analytics request
+    const { data: analyticsRequest, error: requestError } = await supabase
+      .from('analytics_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!request) {
+    if (requestError || !analyticsRequest) {
       return NextResponse.json(
         { success: false, error: 'Request not found' },
         { status: 404 }
       );
     }
 
-    const tweetData = await db.query.tweets.findMany({
-      where: eq(tweets.requestId, id)
-    });
+    // Get tweets if processing is completed
+    let tweets = [];
+    if (analyticsRequest.status.stage === 'completed') {
+      const { data: tweetData, error: tweetsError } = await supabase
+        .from('tweets')
+        .select('*')
+        .eq('url', analyticsRequest.url);
+
+      if (!tweetsError) {
+        tweets = tweetData;
+      }
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        status: request.status,
-        tweets: request.status.stage === 'completed' ? tweetData : undefined
+        status: analyticsRequest.status,
+        tweets: analyticsRequest.status.stage === 'completed' ? tweets : undefined
       }
     });
 
