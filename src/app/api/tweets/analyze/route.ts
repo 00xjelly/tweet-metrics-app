@@ -36,7 +36,6 @@ export async function POST(request: Request) {
 
     console.log('Created analytics request:', analyticsRequest.id);
 
-    // Process directly
     try {
       console.log('Starting processing directly');
       
@@ -68,10 +67,10 @@ export async function POST(request: Request) {
             const { error: upsertError } = await supabase
               .from('tweets')
               .upsert({
-                id: crypto.randomUUID(),
+                analytics_request_id: analyticsRequest.id,
+                tweet_id: tweet.id,
                 url: url,
                 type: tweet.type,
-                tweet_id: tweet.id,
                 twitter_url: tweet.twitterUrl,
                 text: tweet.text,
                 source: tweet.source,
@@ -87,6 +86,8 @@ export async function POST(request: Request) {
                 conversation_id: tweet.conversationId,
                 author_info: tweet.author,
                 raw_response: tweet
+              }, { 
+                onConflict: 'analytics_request_id,tweet_id'
               });
 
             if (upsertError) {
