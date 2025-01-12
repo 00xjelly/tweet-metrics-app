@@ -61,11 +61,20 @@ export async function POST(request: Request) {
           
           if (apiResponse && apiResponse[0] && apiResponse[0].type === 'tweet') {
             const tweet = apiResponse[0];
-            console.log('Processing tweet:', tweet.id);
+            console.log('Processing tweet:', tweet);
             
-            // Extract media information from extended_entities or entities
-            const mediaItems = tweet.extended_entities?.media || tweet.entities?.media || [];
+            // Look for media in various locations of the response
+            let mediaItems = [];
+            if (tweet.extendedEntities?.media) {
+              mediaItems = tweet.extendedEntities.media;
+            } else if (tweet.entities?.media) {
+              mediaItems = tweet.entities.media;
+            } else if (tweet.attachments?.media_keys) {
+              mediaItems = tweet.attachments.media_keys.map(key => ({ type: 'media', key }));
+            }
             
+            console.log('Extracted media items:', mediaItems);
+
             const { error: upsertError } = await supabase
               .from('tweets')
               .upsert({
@@ -87,8 +96,8 @@ export async function POST(request: Request) {
                 lang: tweet.lang,
                 conversation_id: tweet.conversationId,
                 author_info: tweet.author,
-                raw_response: tweet,
-                media_items: mediaItems
+                media_items: mediaItems,
+                raw_response: tweet
               }, { 
                 onConflict: 'analytics_request_id,tweet_id'
               });
