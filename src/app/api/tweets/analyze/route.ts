@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       .from('analytics_requests')
       .insert({
         id: crypto.randomUUID(),
-        url: urls[0], // For now, just store the first URL
+        url: urls[0],
         status: {
           stage: 'queued',
           progress: 0,
@@ -40,7 +40,6 @@ export async function POST(request: Request) {
     try {
       console.log('Starting processing directly');
       
-      // Update status to processing
       await supabase
         .from('analytics_requests')
         .update({
@@ -54,30 +53,40 @@ export async function POST(request: Request) {
         })
         .eq('id', analyticsRequest.id);
 
-      console.log('Updated status to processing');
       let processedCount = 0;
 
       for (const url of urls) {
         try {
-          console.log('About to call getTweetData for URL:', url);
-          const tweetData = await getTweetData(url);
-          console.log('getTweetData response:', tweetData);
+          console.log('Processing URL:', url);
+          const apiResponse = await getTweetData(url);
+          console.log('Got API response:', apiResponse);
           
-          if (tweetData) {
-            console.log('Upserting tweet data to Supabase');
+          if (apiResponse && apiResponse[0] && apiResponse[0].type === 'tweet') {
+            const tweet = apiResponse[0];
+            console.log('Processing tweet:', tweet.id);
+
             const { error: upsertError } = await supabase
               .from('tweets')
               .upsert({
-                id: tweetData.id,
+                id: crypto.randomUUID(),
                 url: url,
-                data: {
-                  username: tweetData.username,
-                  text: tweetData.text,
-                  createdAt: tweetData.createdAt,
-                  metrics: tweetData.metrics
-                },
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                type: tweet.type,
+                tweet_id: tweet.id,
+                twitter_url: tweet.twitterUrl,
+                text: tweet.text,
+                source: tweet.source,
+                retweet_count: tweet.retweetCount,
+                reply_count: tweet.replyCount,
+                like_count: tweet.likeCount,
+                quote_count: tweet.quoteCount,
+                view_count: parseInt(tweet.viewCount) || 0,
+                bookmark_count: tweet.bookmarkCount,
+                created_at: new Date(tweet.createdAt).toISOString(),
+                updated_at: new Date().toISOString(),
+                lang: tweet.lang,
+                conversation_id: tweet.conversationId,
+                author_info: tweet.author,
+                raw_response: tweet
               });
 
             if (upsertError) {
@@ -85,12 +94,11 @@ export async function POST(request: Request) {
               throw upsertError;
             }
 
-            console.log('Successfully upserted tweet data');
+            console.log('Successfully stored tweet:', tweet.id);
           }
 
           processedCount++;
           
-          // Update progress
           await supabase
             .from('analytics_requests')
             .update({
@@ -110,7 +118,6 @@ export async function POST(request: Request) {
         }
       }
 
-      // Update final status
       await supabase
         .from('analytics_requests')
         .update({
@@ -129,7 +136,7 @@ export async function POST(request: Request) {
 
     } catch (processError) {
       console.error('Error in processing:', processError);
-      // Update status to failed
+      
       await supabase
         .from('analytics_requests')
         .update({
@@ -156,20 +163,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error in analyze endpoint:', error);
     
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to process request',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to process request',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
