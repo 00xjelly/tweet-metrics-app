@@ -29,14 +29,14 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
     console.log('Extracted tweet ID:', tweetId);
     console.log('Making request to Apify API...');
 
-    // Updated to use the correct actor name
-    const apiUrl = 'https://api.apify.com/v2/acts/apify~twitter-scraper/run-sync-get-dataset-items';
+    // Using the exact same actor and configuration as the metrics service
+    const apiUrl = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items';
     console.log('API URL:', apiUrl);
 
     const payload = {
-      startUrls: [{ url }],
-      maxTweets: 1,
-      addUserInfo: false
+      tweetIDs: [tweetId],
+      maxItems: 1,
+      queryType: "Latest"
     };
     console.log('Request payload:', payload);
 
@@ -49,7 +49,7 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
       'Authorization': headers.Authorization ? 'Bearer [REDACTED]' : 'Missing'
     });
 
-    const response = await axios.post(apiUrl, payload);
+    const response = await axios.post(apiUrl, payload, { headers });
     console.log('Apify response status:', response.status);
     console.log('Apify response data:', response.data);
 
@@ -61,17 +61,17 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
     const tweet = response.data[0];
     console.log('Successfully parsed tweet data');
 
+    // Map the response to match our expected format
     return {
-      id: tweet.id || tweetId,
-      username: tweet.username || tweet.user?.username,
-      text: tweet.full_text || tweet.text,
+      id: tweet.id,
+      username: tweet.username || tweet.author_id,
+      text: tweet.text,
       createdAt: tweet.created_at,
       metrics: {
-        views: tweet.view_count,
-        likes: tweet.favorite_count || tweet.likes,
-        replies: tweet.reply_count || tweet.replies,
-        retweets: tweet.retweet_count || tweet.retweets,
-        bookmarks: tweet.bookmark_count
+        views: tweet.public_metrics?.impression_count,
+        likes: tweet.public_metrics?.like_count,
+        replies: tweet.public_metrics?.reply_count,
+        retweets: tweet.public_metrics?.retweet_count
       }
     };
 
