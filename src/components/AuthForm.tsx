@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { signIn, signUp } from '@/lib/auth';
 
