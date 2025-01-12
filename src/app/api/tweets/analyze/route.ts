@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { z } from 'zod';
+import { getTweetData } from '@/lib/twitter/scraper';
 
 const RequestSchema = z.object({
   urls: z.array(z.string().url()).min(1)
 });
+
+export const runtime = 'edge';
 
 export async function POST(request: Request) {
   try {
@@ -32,24 +35,106 @@ export async function POST(request: Request) {
 
     console.log('Created analytics request:', analyticsRequest.id);
 
-    // Start processing
-    const origin = request.headers.get('origin') || request.headers.get('host');
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const processUrl = `${protocol}://${origin}/api/tweets/process?id=${analyticsRequest.id}`;
-    
-    console.log('Triggering processing at:', processUrl);
-
+    // Instead of triggering a separate endpoint, process directly
     try {
-      const processResponse = await fetch(processUrl, {
-        method: 'POST'
-      });
+      console.log('Starting processing directly');
+      
+      // Update status to processing
+      await supabase
+        .from('analytics_requests')
+        .update({
+          status: {
+            stage: 'processing',
+            progress: 0,
+            startedAt: new Date().toISOString(),
+            totalCount: urls.length
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', analyticsRequest.id);
 
-      if (!processResponse.ok) {
-        console.error('Process request failed:', await processResponse.text());
+      console.log('Updated status to processing');
+      let processedCount = 0;
+
+      for (const url of urls) {
+        try {
+          console.log('Processing URL:', url);
+          const tweetData = await getTweetData(url);
+          
+          if (tweetData) {
+            console.log('Got tweet data:', tweetData);
+            // Insert or update tweet
+            const { error: upsertError } = await supabase
+              .from('tweets')
+              .upsert({
+                id: tweetData.id,
+                url: url,
+                data: {
+                  username: tweetData.username,
+                  text: tweetData.text,
+                  createdAt: tweetData.createdAt,
+                  metrics: tweetData.metrics
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            if (upsertError) {
+              console.error('Error upserting tweet:', upsertError);
+            }
+          }
+
+          processedCount++;
+          
+          // Update progress
+          await supabase
+            .from('analytics_requests')
+            .update({
+              status: {
+                stage: 'processing',
+                progress: Math.round((processedCount / urls.length) * 100),
+                processedCount,
+                totalCount: urls.length
+              },
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', analyticsRequest.id);
+
+        } catch (error) {
+          console.error(`Error processing tweet URL ${url}:`, error);
+        }
       }
-    } catch (error) {
-      console.error('Error triggering process:', error);
-      // Continue anyway as the status page will handle showing progress
+
+      // Update final status
+      await supabase
+        .from('analytics_requests')
+        .update({
+          status: {
+            stage: 'completed',
+            progress: 100,
+            processedCount,
+            totalCount: urls.length,
+            completedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', analyticsRequest.id);
+
+    } catch (processError) {
+      console.error('Error in processing:', processError);
+      // Update status to failed
+      await supabase
+        .from('analytics_requests')
+        .update({
+          status: {
+            stage: 'failed',
+            progress: 0,
+            error: processError instanceof Error ? processError.message : 'Unknown error',
+            completedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', analyticsRequest.id);
     }
 
     return NextResponse.json({
