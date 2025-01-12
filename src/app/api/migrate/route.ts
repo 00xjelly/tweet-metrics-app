@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../../db';
 import { sql } from '@vercel/postgres';
 
 export const runtime = 'edge';
