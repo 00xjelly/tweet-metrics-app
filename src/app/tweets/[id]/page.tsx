@@ -19,6 +19,7 @@ interface Tweet {
   created_at: string;
   lang: string;
   conversation_id: string;
+  raw_response: any; // For accessing raw data like media
   author_info: {
     userName: string;
     name: string;
@@ -40,6 +41,15 @@ interface ProcessingStatus {
 interface ResultsData {
   status: ProcessingStatus;
   tweets?: Tweet[];
+}
+
+function cleanSourceText(source: string) {
+  // Create a temporary div to parse HTML string
+  const div = document.createElement('div');
+  div.innerHTML = source;
+  // Get text content from the a tag
+  const link = div.querySelector('a');
+  return link ? link.textContent : source;
 }
 
 export default function TweetsPage({ params }: { params: { id: string } }) {
@@ -102,7 +112,7 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Processing Status</h2>
         {data.tweets && data.tweets.length > 0 && (
@@ -129,41 +139,92 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
         <div>
           <h2 className="text-xl font-bold mb-4">Tweet Analytics</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {data.tweets.map(tweet => (
-              <div key={tweet.id} className="p-4 border rounded">
-                <div className="font-bold">
-                  @{tweet.author_info.userName}
-                  {tweet.author_info.isVerified && (
-                    <span className="ml-1 text-blue-500">✓</span>
+          <div className="space-y-6">
+            {data.tweets.map(tweet => {
+              const rawTweet = tweet.raw_response;
+              const media = rawTweet.media || [];
+              
+              return (
+                <div key={tweet.id} className="p-6 border rounded-lg bg-white shadow-sm">
+                  {/* Author Info */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="font-bold text-lg">
+                        @{tweet.author_info.userName}
+                        {tweet.author_info.isVerified && (
+                          <span className="ml-1 text-blue-500">✓</span>
+                        )}
+                      </div>
+                      <div className="text-gray-500">{tweet.author_info.name}</div>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(tweet.created_at).toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* Tweet Content */}
+                  <div className="mb-4 text-lg">{tweet.text}</div>
+
+                  {/* Media */}
+                  {media.length > 0 && (
+                    <div className="mb-4 grid gap-2 grid-cols-1 md:grid-cols-2">
+                      {media.map((item: any, index: number) => (
+                        <div key={index} className="rounded-lg overflow-hidden">
+                          {item.preview_image_url && (
+                            <img 
+                              src={item.preview_image_url} 
+                              alt="Tweet media"
+                              className="w-full h-auto"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
+
+                  {/* Metrics */}
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Views</div>
+                      <div className="font-bold">{tweet.view_count?.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Likes</div>
+                      <div className="font-bold">{tweet.like_count?.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Replies</div>
+                      <div className="font-bold">{tweet.reply_count?.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Retweets</div>
+                      <div className="font-bold">{tweet.retweet_count?.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Quotes</div>
+                      <div className="font-bold">{tweet.quote_count?.toLocaleString()}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-gray-500 text-sm">Bookmarks</div>
+                      <div className="font-bold">{tweet.bookmark_count?.toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <div>via {cleanSourceText(tweet.source)}</div>
+                    <a 
+                      href={tweet.twitter_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      View on Twitter →
+                    </a>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">{tweet.author_info.name}</div>
-                <div className="text-sm text-gray-600 mb-2">
-                  {new Date(tweet.created_at).toLocaleString()}
-                </div>
-                <div className="mb-4">{tweet.text}</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>Views: {tweet.view_count?.toLocaleString()}</div>
-                  <div>Likes: {tweet.like_count?.toLocaleString()}</div>
-                  <div>Replies: {tweet.reply_count?.toLocaleString()}</div>
-                  <div>Retweets: {tweet.retweet_count?.toLocaleString()}</div>
-                  <div>Quotes: {tweet.quote_count?.toLocaleString()}</div>
-                  <div>Bookmarks: {tweet.bookmark_count?.toLocaleString()}</div>
-                </div>
-                <div className="mt-2 text-sm text-gray-500">
-                  via {tweet.source}
-                </div>
-                <a 
-                  href={tweet.twitter_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="mt-2 text-sm text-blue-500 hover:underline block"
-                >
-                  View on Twitter
-                </a>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
