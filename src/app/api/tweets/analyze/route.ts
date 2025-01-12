@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../db';
-import { analyticsRequests } from '../../../../db/schema';
+import { supabase } from '@/lib/db';
 import { z } from 'zod';
 
 const RequestSchema = z.object({
@@ -12,15 +11,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { urls } = RequestSchema.parse(body);
 
-    const [analyticsRequest] = await db.insert(analyticsRequests)
-      .values({
-        urls,
+    // Insert into analytics_requests
+    const { data: analyticsRequest, error: insertError } = await supabase
+      .from('analytics_requests')
+      .insert({
+        id: crypto.randomUUID(),
+        url: urls[0], // For now, just store the first URL
         status: {
           stage: 'queued',
-          progress: 0
+          progress: 0,
+          urls
         }
       })
-      .returning();
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
 
     // Start processing
     fetch(`${request.headers.get('origin')}/api/tweets/process?id=${analyticsRequest.id}`, {
