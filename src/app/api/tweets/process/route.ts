@@ -5,20 +5,20 @@ import { getTweetData } from '@/lib/twitter/scraper';
 export const runtime = 'edge';
 
 export async function POST(request: Request) {
+  // Move id declaration outside try block so it's available in catch
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  console.log('Processing request for ID:', id);
+
+  if (!id) {
+    return NextResponse.json(
+      { success: false, error: 'Request ID is required' },
+      { status: 400 }
+    );
+  }
+
   try {
-    // Correctly extract the ID from URL in an Edge-compatible way
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    console.log('Processing request for ID:', id);
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Request ID is required' },
-        { status: 400 }
-      );
-    }
-
     // Get the analytics request
     const { data: analyticsRequest, error: fetchError } = await supabase
       .from('analytics_requests')
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error processing analytics request:', error);
     
-    // Update error status
+    // Update error status - now id is in scope
     await supabase
       .from('analytics_requests')
       .update({
