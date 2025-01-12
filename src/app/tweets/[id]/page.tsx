@@ -19,7 +19,7 @@ interface Tweet {
   created_at: string;
   lang: string;
   conversation_id: string;
-  raw_response: any; // For accessing raw data like media
+  raw_response: any;
   author_info: {
     userName: string;
     name: string;
@@ -44,10 +44,8 @@ interface ResultsData {
 }
 
 function cleanSourceText(source: string) {
-  // Create a temporary div to parse HTML string
   const div = document.createElement('div');
   div.innerHTML = source;
-  // Get text content from the a tag
   const link = div.querySelector('a');
   return link ? link.textContent : source;
 }
@@ -141,11 +139,12 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
           
           <div className="space-y-6">
             {data.tweets.map(tweet => {
-              const rawTweet = tweet.raw_response;
-              const media = rawTweet.media || [];
+              // Extract media from raw response
+              const tweetData = tweet.raw_response;
+              console.log('Raw tweet data:', tweetData);
               
               return (
-                <div key={tweet.id} className="p-6 border rounded-lg bg-white shadow-sm">
+                <div key={tweet.tweet_id} className="p-6 border rounded-lg bg-white shadow-sm">
                   {/* Author Info */}
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -165,20 +164,13 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
                   {/* Tweet Content */}
                   <div className="mb-4 text-lg">{tweet.text}</div>
 
-                  {/* Media */}
-                  {media.length > 0 && (
-                    <div className="mb-4 grid gap-2 grid-cols-1 md:grid-cols-2">
-                      {media.map((item: any, index: number) => (
-                        <div key={index} className="rounded-lg overflow-hidden">
-                          {item.preview_image_url && (
-                            <img 
-                              src={item.preview_image_url} 
-                              alt="Tweet media"
-                              className="w-full h-auto"
-                            />
-                          )}
-                        </div>
-                      ))}
+                  {/* Media - Debug View */}
+                  {tweetData && (
+                    <div className="mb-4">
+                      <div className="text-sm text-gray-500 mb-2">Media Content:</div>
+                      <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+                        {JSON.stringify(tweetData.media || [], null, 2)}
+                      </pre>
                     </div>
                   )}
 
