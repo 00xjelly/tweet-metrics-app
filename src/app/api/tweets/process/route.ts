@@ -5,7 +5,6 @@ import { getTweetData } from '@/lib/twitter/scraper';
 export const runtime = 'edge';
 
 export async function POST(request: Request) {
-  // Move id declaration outside try block so it's available in catch
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
@@ -58,24 +57,33 @@ export async function POST(request: Request) {
         
         if (tweetData) {
           console.log('Got tweet data:', tweetData);
-          // Insert or update tweet
+          
+          // Store complete data in tweets table
           const { error: upsertError } = await supabase
             .from('tweets')
             .upsert({
-              id: tweetData.id,
+              id: crypto.randomUUID(), // Unique ID for our record
               url: url,
-              data: {
-                username: tweetData.username,
-                text: tweetData.text,
-                createdAt: tweetData.createdAt,
-                metrics: tweetData.metrics
-              },
+              tweet_id: tweetData.id,
+              author_id: tweetData.author_id,
+              username: tweetData.username,
+              text: tweetData.text,
+              tweet_created_at: tweetData.created_at,
+              impression_count: tweetData.public_metrics?.impression_count || 0,
+              like_count: tweetData.public_metrics?.like_count || 0,
+              reply_count: tweetData.public_metrics?.reply_count || 0,
+              retweet_count: tweetData.public_metrics?.retweet_count || 0,
+              quote_count: tweetData.public_metrics?.quote_count || 0,
+              bookmark_count: tweetData.public_metrics?.bookmark_count || 0,
+              view_count: tweetData.public_metrics?.view_count || 0,
+              raw_data: tweetData, // Store complete raw response
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
 
           if (upsertError) {
             console.error('Error upserting tweet:', upsertError);
+            throw upsertError;
           }
         }
 
@@ -134,7 +142,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error processing analytics request:', error);
     
-    // Update error status - now id is in scope
     await supabase
       .from('analytics_requests')
       .update({
