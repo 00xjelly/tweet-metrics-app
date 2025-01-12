@@ -9,11 +9,14 @@ export async function GET(
     const id = searchParams.get('id');
 
     if (!id) {
+      console.error('No ID provided');
       return NextResponse.json(
         { success: false, error: 'Request ID is required' },
         { status: 400 }
       );
     }
+
+    console.log('Fetching analytics request with ID:', id);
 
     // Get analytics request
     const { data: analyticsRequest, error: requestError } = await supabase
@@ -22,23 +25,38 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (requestError || !analyticsRequest) {
+    if (requestError) {
+      console.error('Error fetching analytics request:', requestError);
+      return NextResponse.json(
+        { success: false, error: 'Request not found', details: requestError.message },
+        { status: 404 }
+      );
+    }
+
+    if (!analyticsRequest) {
+      console.error('No analytics request found for ID:', id);
       return NextResponse.json(
         { success: false, error: 'Request not found' },
         { status: 404 }
       );
     }
 
+    console.log('Found analytics request:', analyticsRequest);
+
     // Get tweets if processing is completed
     let tweets = [];
-    if (analyticsRequest.status.stage === 'completed') {
+    if (analyticsRequest.status?.stage === 'completed') {
+      console.log('Fetching associated tweets');
       const { data: tweetData, error: tweetsError } = await supabase
         .from('tweets')
         .select('*')
         .eq('url', analyticsRequest.url);
 
-      if (!tweetsError) {
+      if (tweetsError) {
+        console.error('Error fetching tweets:', tweetsError);
+      } else {
         tweets = tweetData;
+        console.log('Found tweets:', tweets.length);
       }
     }
 
@@ -46,14 +64,14 @@ export async function GET(
       success: true,
       data: {
         status: analyticsRequest.status,
-        tweets: analyticsRequest.status.stage === 'completed' ? tweets : undefined
+        tweets: analyticsRequest.status?.stage === 'completed' ? tweets : undefined
       }
     });
 
   } catch (error) {
-    console.error('Error fetching status:', error);
+    console.error('Error in status endpoint:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch status' },
+      { success: false, error: 'Failed to fetch status', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
