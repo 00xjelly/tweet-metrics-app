@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../db';
-import { analyticsRequests, tweets } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
-import { getTweetData } from '../../../../lib/twitter/scraper';
+import { supabase } from '@/lib/db';
+import { getTweetData } from '@/lib/twitter/scraper';
 
 export const runtime = 'edge';
 
@@ -10,7 +8,7 @@ export async function POST(
   request: Request,
   { searchParams }: { searchParams: { get: (key: string) => string | null } }
 ) {
-  const id = parseInt(searchParams.get('id') || '');
+  const id = searchParams.get('id');
 
   if (!id) {
     return NextResponse.json(
@@ -20,112 +18,117 @@ export async function POST(
   }
 
   try {
-    const analyticsRequest = await db.query.analyticsRequests.findFirst({
-      where: eq(analyticsRequests.id, id)
-    });
+    // Get the analytics request
+    const { data: analyticsRequest, error: fetchError } = await supabase
+      .from('analytics_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!analyticsRequest) {
-      return NextResponse.json(
-        { success: false, error: 'Analytics request not found' },
-        { status: 404 }
-      );
+    if (fetchError || !analyticsRequest) {
+      throw new Error('Analytics request not found');
     }
 
-    await db.update(analyticsRequests)
-      .set({
+    const urls = analyticsRequest.status.urls || [];
+
+    // Update status to processing
+    await supabase
+      .from('analytics_requests')
+      .update({
         status: {
           stage: 'processing',
           progress: 0,
           startedAt: new Date().toISOString(),
-          totalCount: analyticsRequest.urls.length
+          totalCount: urls.length
         },
-        updatedAt: new Date()
+        updated_at: new Date().toISOString()
       })
-      .where(eq(analyticsRequests.id, id));
+      .eq('id', id);
 
-    const processedTweets = [];
     let processedCount = 0;
 
-    for (const url of analyticsRequest.urls) {
+    for (const url of urls) {
       try {
         const tweetData = await getTweetData(url);
         
         if (tweetData) {
-          const [tweet] = await db.insert(tweets)
-            .values({
-              tweetId: tweetData.id,
-              authorUsername: tweetData.username,
-              content: tweetData.text,
-              createdAt: new Date(tweetData.createdAt),
-              metrics: tweetData.metrics,
-              requestId: id
-            })
-            .onConflictDoUpdate({
-              target: tweets.tweetId,
-              set: {
-                metrics: tweetData.metrics,
-                lastUpdated: new Date()
-              }
-            })
-            .returning();
-
-          processedTweets.push(tweet);
+          // Insert or update tweet
+          await supabase
+            .from('tweets')
+            .upsert({
+              id: tweetData.id,
+              url: url,
+              data: {
+                username: tweetData.username,
+                text: tweetData.text,
+                createdAt: tweetData.createdAt,
+                metrics: tweetData.metrics
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
         }
 
         processedCount++;
 
-        await db.update(analyticsRequests)
-          .set({
+        // Update progress
+        await supabase
+          .from('analytics_requests')
+          .update({
             status: {
               stage: 'processing',
-              progress: Math.round((processedCount / analyticsRequest.urls.length) * 100),
+              progress: Math.round((processedCount / urls.length) * 100),
               processedCount,
-              totalCount: analyticsRequest.urls.length
+              totalCount: urls.length
             },
-            updatedAt: new Date()
+            updated_at: new Date().toISOString()
           })
-          .where(eq(analyticsRequests.id, id));
+          .eq('id', id);
 
       } catch (error) {
         console.error(`Error processing tweet URL ${url}:`, error);
       }
     }
 
-    await db.update(analyticsRequests)
-      .set({
+    // Update final status
+    await supabase
+      .from('analytics_requests')
+      .update({
         status: {
           stage: 'completed',
           progress: 100,
           processedCount,
-          totalCount: analyticsRequest.urls.length,
+          totalCount: urls.length,
           completedAt: new Date().toISOString()
         },
-        updatedAt: new Date()
+        updated_at: new Date().toISOString()
       })
-      .where(eq(analyticsRequests.id, id));
+      .eq('id', id);
 
     return NextResponse.json({
       success: true,
       data: {
         processedCount,
-        totalCount: analyticsRequest.urls.length
+        totalCount: urls.length
       }
     });
 
   } catch (error) {
     console.error('Error processing analytics request:', error);
     
-    await db.update(analyticsRequests)
-      .set({
+    // Update error status
+    await supabase
+      .from('analytics_requests')
+      .update({
         status: {
           stage: 'failed',
           progress: 0,
           error: error instanceof Error ? error.message : 'Unknown error',
           completedAt: new Date().toISOString()
         },
-        updatedAt: new Date()
+        updated_at: new Date().toISOString()
       })
-      .where(eq(analyticsRequests.id, id));
+      .eq('id', id);
 
     return NextResponse.json(
       { success: false, error: 'Failed to process request' },
