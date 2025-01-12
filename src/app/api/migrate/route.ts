@@ -6,22 +6,34 @@ export const runtime = 'edge';
 export async function GET(request: NextRequest) {
   try {
     // Create analytics_requests table
-    await supabase.from('analytics_requests').create({
-      id: 'text PRIMARY KEY',
-      url: 'text',
-      status: 'jsonb',
-      createdAt: 'text',
-      updatedAt: 'text'
+    const { error: analyticsError } = await supabase.rpc('execute_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS analytics_requests (
+          id TEXT PRIMARY KEY,
+          url TEXT NOT NULL,
+          status JSONB,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `
     });
 
+    if (analyticsError) throw analyticsError;
+
     // Create tweets table
-    await supabase.from('tweets').create({
-      id: 'text PRIMARY KEY',
-      url: 'text',
-      data: 'jsonb',
-      createdAt: 'text',
-      updatedAt: 'text'
+    const { error: tweetsError } = await supabase.rpc('execute_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS tweets (
+          id TEXT PRIMARY KEY,
+          url TEXT NOT NULL,
+          data JSONB,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `
     });
+
+    if (tweetsError) throw tweetsError;
 
     return NextResponse.json({
       message: 'Database tables created successfully',
