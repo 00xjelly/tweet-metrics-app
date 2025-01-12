@@ -16,6 +16,9 @@ interface TweetData {
 
 export async function getTweetData(url: string): Promise<TweetData | null> {
   try {
+    console.log('Starting getTweetData for URL:', url);
+    console.log('APIFY_TOKEN exists:', !!process.env.APIFY_TOKEN);
+
     const tweetId = url.split('/').pop()?.split('?')[0];
     
     if (!tweetId) {
@@ -23,14 +26,27 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
       return null;
     }
 
-    const response = await axios.post('https://api.apify.com/v2/acts/quacker~tweet-scraper/run-sync-get-dataset-items', {
-      tweets: [tweetId],
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.APIFY_TOKEN}`
-      }
+    console.log('Extracted tweet ID:', tweetId);
+    console.log('Making request to Apify API...');
+
+    const apiUrl = 'https://api.apify.com/v2/acts/quacker~tweet-scraper/run-sync-get-dataset-items';
+    console.log('API URL:', apiUrl);
+
+    const payload = { tweets: [tweetId] };
+    console.log('Request payload:', payload);
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.APIFY_TOKEN}`
+    };
+    console.log('Request headers:', {
+      ...headers,
+      'Authorization': headers.Authorization ? 'Bearer [REDACTED]' : 'Missing'
     });
+
+    const response = await axios.post(apiUrl, payload, { headers });
+    console.log('Apify response status:', response.status);
+    console.log('Apify response data:', response.data);
 
     if (!response.data?.[0]) {
       console.error('No tweet data found for:', url);
@@ -38,6 +54,7 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
     }
 
     const tweet = response.data[0];
+    console.log('Successfully parsed tweet data');
 
     return {
       id: tweet.id,
@@ -54,7 +71,16 @@ export async function getTweetData(url: string): Promise<TweetData | null> {
     };
 
   } catch (error) {
-    console.error('Error fetching tweet data:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+    } else {
+      console.error('Non-Axios error fetching tweet data:', error);
+    }
     throw error;
   }
 }
