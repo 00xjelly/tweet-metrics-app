@@ -1,8 +1,32 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { ProcessingStatus, Tweet } from '@/db/schema';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+
+interface Metrics {
+  views?: number;
+  likes?: number;
+  replies?: number;
+  retweets?: number;
+}
+
+interface Tweet {
+  id: string;
+  url: string;
+  data: {
+    username: string;
+    text: string;
+    createdAt: string;
+    metrics: Metrics;
+  };
+}
+
+interface ProcessingStatus {
+  stage: 'queued' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  error?: string;
+  processedCount?: number;
+  totalCount?: number;
+}
 
 interface ResultsData {
   status: ProcessingStatus;
@@ -16,8 +40,11 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     const pollStatus = async () => {
       try {
+        console.log('Fetching status for ID:', params.id);
         const response = await fetch(`/api/tweets/status?id=${params.id}`);
         const result = await response.json();
+
+        console.log('Status response:', result);
 
         if (!result.success) {
           throw new Error(result.error);
@@ -25,11 +52,13 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
 
         setData(result.data);
 
+        // Continue polling if not completed or failed
         if (result.data.status.stage !== 'completed' && result.data.status.stage !== 'failed') {
           setTimeout(pollStatus, 2000);
         }
 
       } catch (error) {
+        console.error('Error in polling:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch status');
       }
     };
@@ -40,7 +69,7 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
   if (error) {
     return (
       <div className="p-4">
-        <div className="text-red-500">{error}</div>
+        <div className="text-red-500">Error: {error}</div>
       </div>
     );
   }
@@ -94,17 +123,17 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.tweets.map(tweet => (
               <div key={tweet.id} className="p-4 border rounded">
-                <div className="font-bold">@{tweet.authorUsername}</div>
+                <div className="font-bold">@{tweet.data.username}</div>
                 <div className="text-sm text-gray-600 mb-2">
-                  {new Date(tweet.createdAt).toLocaleString()}
+                  {new Date(tweet.data.createdAt).toLocaleString()}
                 </div>
-                <div className="mb-4">{tweet.content}</div>
-                {tweet.metrics && (
+                <div className="mb-4">{tweet.data.text}</div>
+                {tweet.data.metrics && (
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Views: {tweet.metrics.views?.toLocaleString()}</div>
-                    <div>Likes: {tweet.metrics.likes?.toLocaleString()}</div>
-                    <div>Replies: {tweet.metrics.replies?.toLocaleString()}</div>
-                    <div>Retweets: {tweet.metrics.retweets?.toLocaleString()}</div>
+                    <div>Views: {tweet.data.metrics.views?.toLocaleString()}</div>
+                    <div>Likes: {tweet.data.metrics.likes?.toLocaleString()}</div>
+                    <div>Replies: {tweet.data.metrics.replies?.toLocaleString()}</div>
+                    <div>Retweets: {tweet.data.metrics.retweets?.toLocaleString()}</div>
                   </div>
                 )}
               </div>
