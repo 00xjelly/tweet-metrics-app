@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     console.log('Starting analysis with APIFY_TOKEN:', process.env.APIFY_TOKEN ? 'Present' : 'Missing');
     console.log('Analyzing URLs:', urls);
 
-    // Insert into analytics_requests
     const { data: analyticsRequest, error: insertError } = await supabase
       .from('analytics_requests')
       .insert({
@@ -63,7 +62,10 @@ export async function POST(request: Request) {
           if (apiResponse && apiResponse[0] && apiResponse[0].type === 'tweet') {
             const tweet = apiResponse[0];
             console.log('Processing tweet:', tweet.id);
-
+            
+            // Extract media information from extended_entities or entities
+            const mediaItems = tweet.extended_entities?.media || tweet.entities?.media || [];
+            
             const { error: upsertError } = await supabase
               .from('tweets')
               .upsert({
@@ -85,7 +87,8 @@ export async function POST(request: Request) {
                 lang: tweet.lang,
                 conversation_id: tweet.conversationId,
                 author_info: tweet.author,
-                raw_response: tweet
+                raw_response: tweet,
+                media_items: mediaItems
               }, { 
                 onConflict: 'analytics_request_id,tweet_id'
               });
