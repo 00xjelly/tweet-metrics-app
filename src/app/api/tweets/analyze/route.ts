@@ -8,19 +8,10 @@ const RequestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // Create anonymous session for testing
-    const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({
-      email: process.env.TEST_USER_EMAIL || 'test@example.com',
-      password: process.env.TEST_USER_PASSWORD || 'test123'
-    });
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      // Continue anyway for now
-    }
-
     const body = await request.json();
     const { urls } = RequestSchema.parse(body);
+
+    console.log('Analyzing URLs:', urls);
 
     // Insert into analytics_requests
     const { data: analyticsRequest, error: insertError } = await supabase
@@ -32,18 +23,34 @@ export async function POST(request: Request) {
           stage: 'queued',
           progress: 0,
           urls
-        },
-        user_id: session?.user?.id || null // Add user_id if we have a session
+        }
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
 
+    console.log('Created analytics request:', analyticsRequest.id);
+
     // Start processing
-    fetch(`${request.headers.get('origin')}/api/tweets/process?id=${analyticsRequest.id}`, {
-      method: 'POST'
-    }).catch(console.error); // Non-blocking call
+    const origin = request.headers.get('origin') || request.headers.get('host');
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    const processUrl = `${protocol}://${origin}/api/tweets/process?id=${analyticsRequest.id}`;
+    
+    console.log('Triggering processing at:', processUrl);
+
+    try {
+      const processResponse = await fetch(processUrl, {
+        method: 'POST'
+      });
+
+      if (!processResponse.ok) {
+        console.error('Process request failed:', await processResponse.text());
+      }
+    } catch (error) {
+      console.error('Error triggering process:', error);
+      // Continue anyway as the status page will handle showing progress
+    }
 
     return NextResponse.json({
       success: true,
