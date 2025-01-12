@@ -8,6 +8,17 @@ const RequestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // Create anonymous session for testing
+    const { data: { session }, error: authError } = await supabase.auth.signInWithPassword({
+      email: process.env.TEST_USER_EMAIL || 'test@example.com',
+      password: process.env.TEST_USER_PASSWORD || 'test123'
+    });
+
+    if (authError) {
+      console.error('Auth error:', authError);
+      // Continue anyway for now
+    }
+
     const body = await request.json();
     const { urls } = RequestSchema.parse(body);
 
@@ -21,7 +32,8 @@ export async function POST(request: Request) {
           stage: 'queued',
           progress: 0,
           urls
-        }
+        },
+        user_id: session?.user?.id || null // Add user_id if we have a session
       })
       .select()
       .single();
