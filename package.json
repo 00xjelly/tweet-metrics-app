@@ -12,12 +12,17 @@
     "@vercel/postgres": "^0.7.2",
     "next": "14.0.4",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "papaparse": "^5.4.1",
+    "zod": "^3.22.4",
+    "drizzle-orm": "^0.30.4",
+    "drizzle-orm/vercel-postgres": "^0.30.4"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/papaparse": "^5.3.14",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
     "typescript": "^5"
