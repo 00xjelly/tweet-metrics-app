@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from 'react';
 
-interface Metrics {
-  views?: number;
-  likes?: number;
-  replies?: number;
-  retweets?: number;
-}
-
 interface Tweet {
   id: string;
   url: string;
-  data: {
-    username: string;
-    text: string;
-    createdAt: string;
-    metrics: Metrics;
+  type: string;
+  tweet_id: string;
+  twitter_url: string;
+  text: string;
+  source: string;
+  retweet_count: number;
+  reply_count: number;
+  like_count: number;
+  quote_count: number;
+  view_count: number;
+  bookmark_count: number;
+  created_at: string;
+  lang: string;
+  conversation_id: string;
+  author_info: {
+    userName: string;
+    name: string;
+    description: string;
+    followers: number;
+    following: number;
+    isVerified: boolean;
   };
 }
 
@@ -123,19 +132,36 @@ export default function TweetsPage({ params }: { params: { id: string } }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.tweets.map(tweet => (
               <div key={tweet.id} className="p-4 border rounded">
-                <div className="font-bold">@{tweet.data.username}</div>
-                <div className="text-sm text-gray-600 mb-2">
-                  {new Date(tweet.data.createdAt).toLocaleString()}
+                <div className="font-bold">
+                  @{tweet.author_info.userName}
+                  {tweet.author_info.isVerified && (
+                    <span className="ml-1 text-blue-500">✓</span>
+                  )}
                 </div>
-                <div className="mb-4">{tweet.data.text}</div>
-                {tweet.data.metrics && (
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Views: {tweet.data.metrics.views?.toLocaleString()}</div>
-                    <div>Likes: {tweet.data.metrics.likes?.toLocaleString()}</div>
-                    <div>Replies: {tweet.data.metrics.replies?.toLocaleString()}</div>
-                    <div>Retweets: {tweet.data.metrics.retweets?.toLocaleString()}</div>
-                  </div>
-                )}
+                <div className="text-sm text-gray-500">{tweet.author_info.name}</div>
+                <div className="text-sm text-gray-600 mb-2">
+                  {new Date(tweet.created_at).toLocaleString()}
+                </div>
+                <div className="mb-4">{tweet.text}</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Views: {tweet.view_count?.toLocaleString()}</div>
+                  <div>Likes: {tweet.like_count?.toLocaleString()}</div>
+                  <div>Replies: {tweet.reply_count?.toLocaleString()}</div>
+                  <div>Retweets: {tweet.retweet_count?.toLocaleString()}</div>
+                  <div>Quotes: {tweet.quote_count?.toLocaleString()}</div>
+                  <div>Bookmarks: {tweet.bookmark_count?.toLocaleString()}</div>
+                </div>
+                <div className="mt-2 text-sm text-gray-500">
+                  via {tweet.source}
+                </div>
+                <a 
+                  href={tweet.twitter_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="mt-2 text-sm text-blue-500 hover:underline block"
+                >
+                  View on Twitter
+                </a>
               </div>
             ))}
           </div>
