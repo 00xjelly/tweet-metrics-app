@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { urls } = RequestSchema.parse(body);
 
+    console.log('Starting analysis with APIFY_TOKEN:', process.env.APIFY_TOKEN ? 'Present' : 'Missing');
     console.log('Analyzing URLs:', urls);
 
     // Insert into analytics_requests
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
 
     console.log('Created analytics request:', analyticsRequest.id);
 
-    // Instead of triggering a separate endpoint, process directly
+    // Process directly
     try {
       console.log('Starting processing directly');
       
@@ -58,12 +59,12 @@ export async function POST(request: Request) {
 
       for (const url of urls) {
         try {
-          console.log('Processing URL:', url);
+          console.log('About to call getTweetData for URL:', url);
           const tweetData = await getTweetData(url);
+          console.log('getTweetData response:', tweetData);
           
           if (tweetData) {
-            console.log('Got tweet data:', tweetData);
-            // Insert or update tweet
+            console.log('Upserting tweet data to Supabase');
             const { error: upsertError } = await supabase
               .from('tweets')
               .upsert({
@@ -81,7 +82,10 @@ export async function POST(request: Request) {
 
             if (upsertError) {
               console.error('Error upserting tweet:', upsertError);
+              throw upsertError;
             }
+
+            console.log('Successfully upserted tweet data');
           }
 
           processedCount++;
@@ -102,6 +106,7 @@ export async function POST(request: Request) {
 
         } catch (error) {
           console.error(`Error processing tweet URL ${url}:`, error);
+          throw error;
         }
       }
 
@@ -120,6 +125,8 @@ export async function POST(request: Request) {
         })
         .eq('id', analyticsRequest.id);
 
+      console.log('Processing completed successfully');
+
     } catch (processError) {
       console.error('Error in processing:', processError);
       // Update status to failed
@@ -135,6 +142,8 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString()
         })
         .eq('id', analyticsRequest.id);
+
+      throw processError;
     }
 
     return NextResponse.json({
@@ -145,7 +154,7 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error in analyze endpoint:', error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -155,7 +164,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: false, error: 'Failed to process request' },
+      { 
+        success: false, 
+        error: 'Failed to process request',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
