@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 
-export async function GET(
-  request: Request,
-  { searchParams }: { searchParams: { get: (key: string) => string | null } }
-) {
+export const runtime = 'edge';
+
+export async function GET(request: Request) {
   try {
+    // Correctly extract the ID from URL in an Edge-compatible way
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
@@ -71,7 +72,11 @@ export async function GET(
   } catch (error) {
     console.error('Error in status endpoint:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch status', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        success: false, 
+        error: 'Failed to fetch status', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
