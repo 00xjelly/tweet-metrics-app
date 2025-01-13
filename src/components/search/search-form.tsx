@@ -45,24 +45,41 @@ export function SearchForm() {
     setUrls(lines);
   };
 
+  const isValidTwitterUrl = (url: string): boolean => {
+    try {
+      const parsedUrl = new URL(url);
+      return (
+        parsedUrl.protocol === 'https:' &&
+        parsedUrl.hostname === 'twitter.com' &&
+        parsedUrl.pathname.includes('/status/')
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const handleFileInput = async (file: File) => {
     return new Promise((resolve) => {
       Papa.parse(file, {
         complete: (results) => {
+          console.log('Parsed CSV data:', results.data);
+          
           // Extract only the first column (Column A) URLs
           const urlList = results.data
             .map(row => {
-              // Get first column value and ensure it's a string
-              const url = String(row[0] || '').trim();
-              // Basic URL validation
-              if (url.startsWith('http') && url.includes('twitter.com')) {
-                return url;
-              }
-              return '';
+              if (!Array.isArray(row) || !row[0]) return '';
+              const url = String(row[0]).trim();
+              return isValidTwitterUrl(url) ? url : '';
             })
-            .filter(Boolean); // Remove empty strings
+            .filter(Boolean);
 
-          setUrls(urlList);
+          console.log('Filtered URLs:', urlList);
+
+          if (urlList.length === 0) {
+            setError('No valid Twitter URLs found in Column A. URLs should be in the format https://twitter.com/username/status/...');
+          } else {
+            setUrls(urlList);
+          }
           resolve(null);
         },
         error: (error) => {
@@ -81,7 +98,7 @@ export function SearchForm() {
           <input
             type="text"
             className="w-full p-2 border rounded"
-            placeholder="https://twitter.com/..."
+            placeholder="https://twitter.com/username/status/123..."
             onChange={(e) => handleUrlInput(e.target.value)}
             disabled={loading}
           />
@@ -98,7 +115,10 @@ export function SearchForm() {
         </div>
 
         <div>
-          <label className="block mb-2">Or upload CSV (URLs in Column A)</label>
+          <label className="block mb-2">Or upload CSV</label>
+          <div className="text-sm text-gray-600 mb-2">
+            Place tweet URLs in Column A (format: https://twitter.com/username/status/...)
+          </div>
           <input
             type="file"
             accept=".csv"
