@@ -21,7 +21,7 @@ export async function GET(
 
     console.log('Fetching tweets for queryId:', queryId);
     const results = await db.query.tweets.findMany({
-      where: eq(tweets.queryId, queryId),
+      where: eq(tweets.requestId, queryId),
       orderBy: (tweets, { desc }) => [desc(tweets.createdAt)]
     });
 
