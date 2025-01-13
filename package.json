@@ -11,6 +11,9 @@
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
     "@vercel/postgres": "^0.5.1",
+    "axios": "^1.6.2",
+    "papaparse": "^5.4.1",
+    "@supabase/supabase-js": "^2.39.0",
     "class-variance-authority": "^0.7.0",
     "drizzle-orm": "^0.29.1",
     "lucide-react": "^0.294.0",
@@ -22,6 +25,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/papaparse": "^5.3.14",
     "autoprefixer": "^10.0.1",
     "drizzle-kit": "^0.20.6",
     "eslint": "^8",
