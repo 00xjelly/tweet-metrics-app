@@ -1,15 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/supabase';
+import { drizzle } from 'drizzle-orm/vercel-postgres';
+import { sql } from '@vercel/postgres';
+import * as schema from '@/db/schema';
 
-if (!process.env.SUPABASE_URL) throw new Error('Missing SUPABASE_URL');
-if (!process.env.SUPABASE_ANON_KEY) throw new Error('Missing SUPABASE_ANON_KEY');
+const db = drizzle(sql, { schema });
 
-export const supabase = createClient<Database>(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: false, // recommended for edge functions
-    }
-  }
-);
+export { db, sql };
+export * from '@/db/schema';
