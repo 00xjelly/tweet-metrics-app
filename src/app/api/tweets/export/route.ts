@@ -39,8 +39,7 @@ export async function GET(request: Request) {
     const csvHeaders = [
       'Tweet ID',
       'Tweet URL',
-      'Author Username',
-      'Author Name',
+      'Author',
       'Text',
       'Created At',
       'Is Reply',
@@ -56,7 +55,6 @@ export async function GET(request: Request) {
       tweet.tweet_id,
       tweet.twitter_url || '',
       tweet.author_info?.username || '',
-      tweet.author_info?.name || '',
       `"${(tweet.text || '').replace(/"/g, '""')}"`,
       tweet.created_at,
       tweet.raw_response?.isReply || false,
