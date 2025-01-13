@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 
+export const runtime = 'edge';
+
 export async function GET(
   request: Request,
   { params }: { params: { queryId: string } }
 ) {
   try {
-    const queryId = parseInt(params.queryId);
+    const queryId = params.queryId;
     console.log('Attempting to export tweets for queryId:', queryId);
 
     const { data: results, error } = await supabase
       .from('tweets')
       .select('*')
-      .eq('request_id', queryId)
+      .eq('analytics_request_id', queryId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -42,14 +44,14 @@ export async function GET(
 
     const csvRows = results.map(tweet => [
       tweet.tweet_id,
-      tweet.author_username,
-      `"${(tweet.content || '').replace(/"/g, '""')}"`,
+      tweet.author_info?.username || '',
+      `"${(tweet.text || '').replace(/"/g, '""')}"`,
       tweet.created_at,
-      tweet.metrics?.views || 0,
-      tweet.metrics?.likes || 0,
-      tweet.metrics?.replies || 0,
-      tweet.metrics?.retweets || 0,
-      tweet.metrics?.bookmarks || 0
+      tweet.view_count || 0,
+      tweet.like_count || 0,
+      tweet.reply_count || 0,
+      tweet.retweet_count || 0,
+      tweet.bookmark_count || 0
     ].join(','));
 
     const csv = [csvHeaders, ...csvRows].join('\n');
