@@ -1,14 +1,18 @@
+import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 
-export const metadata = {
-  title: 'Tweet Analytics',
-  description: 'Analyze tweet metrics and engagement',
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className={GeistSans.className}>
+      <body>
+        <main className="min-h-screen items-center justify-center p-24">
+          {children}
+        </main>
+      </body>
     </html>
-  );
+  )
 }
