@@ -7,6 +7,7 @@ export async function GET(
 ) {
   try {
     const queryId = parseInt(params.queryId);
+    console.log('Attempting to export tweets for queryId:', queryId);
 
     // Using Supabase client instead of Drizzle
     const { data: results, error } = await supabase
@@ -15,7 +16,12 @@ export async function GET(
       .eq('request_id', queryId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase query error:', error);
+      throw error;
+    }
+
+    console.log('Query results:', results ? `Found ${results.length} tweets` : 'No results');
 
     if (!results || results.length === 0) {
       return NextResponse.json(
@@ -59,7 +65,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error exporting tweets:', error);
+    console.error('Detailed export error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to export tweets' },
       { status: 500 }
