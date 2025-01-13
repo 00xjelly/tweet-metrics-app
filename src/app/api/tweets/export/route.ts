@@ -5,9 +5,15 @@ export const runtime = 'edge';
 
 export async function GET(request: Request) {
   try {
-    // Get queryId from URL
-    const url = new URL(request.url);
-    const queryId = url.pathname.split('/').pop();
+    const { searchParams } = new URL(request.url);
+    const queryId = searchParams.get('id');
+
+    if (!queryId) {
+      return NextResponse.json(
+        { success: false, error: 'No ID provided' },
+        { status: 400 }
+      );
+    }
 
     console.log('Attempting to export tweets for queryId:', queryId);
 
@@ -33,13 +39,13 @@ export async function GET(request: Request) {
     const csvHeaders = [
       'Tweet ID',
       'Author',
-      'Content',
+      'Text',
       'Created At',
       'Views',
       'Likes',
       'Replies',
       'Retweets',
-      'Bookmarks'
+      'Quote Count'
     ].join(',');
 
     const csvRows = results.map(tweet => [
@@ -51,7 +57,7 @@ export async function GET(request: Request) {
       tweet.like_count || 0,
       tweet.reply_count || 0,
       tweet.retweet_count || 0,
-      tweet.bookmark_count || 0
+      tweet.quote_count || 0
     ].join(','));
 
     const csv = [csvHeaders, ...csvRows].join('\n');
