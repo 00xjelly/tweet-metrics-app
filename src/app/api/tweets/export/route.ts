@@ -1,21 +1,28 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../db';
-import { tweets } from '../../../../db/schema';
-import { eq } from 'drizzle-orm';
+import { supabase } from '@/lib/db';
 
-export async function GET(
-  request: Request,
-  { searchParams }: { searchParams: { get: (key: string) => string | null } }
-) {
+export const runtime = 'edge';
+
+export async function GET(request: Request) {
   try {
-    const id = parseInt(searchParams.get('id') || '');
+    // Get queryId from URL
+    const url = new URL(request.url);
+    const queryId = url.pathname.split('/').pop();
 
-    const results = await db.query.tweets.findMany({
-      where: eq(tweets.requestId, id),
-      orderBy: (tweets, { desc }) => [desc(tweets.createdAt)]
-    });
+    console.log('Attempting to export tweets for queryId:', queryId);
 
-    if (results.length === 0) {
+    const { data: results, error } = await supabase
+      .from('tweets')
+      .select('*')
+      .eq('analytics_request_id', queryId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase query error:', error);
+      throw error;
+    }
+
+    if (!results || results.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No tweets found for this request' },
         { status: 404 }
@@ -36,15 +43,15 @@ export async function GET(
     ].join(',');
 
     const csvRows = results.map(tweet => [
-      tweet.tweetId,
-      tweet.authorUsername,
-      `"${(tweet.content || '').replace(/"/g, '""')}"`,
-      tweet.createdAt.toISOString(),
-      tweet.metrics?.views || 0,
-      tweet.metrics?.likes || 0,
-      tweet.metrics?.replies || 0,
-      tweet.metrics?.retweets || 0,
-      tweet.metrics?.bookmarks || 0
+      tweet.tweet_id,
+      tweet.author_info?.username || '',
+      `"${(tweet.text || '').replace(/"/g, '""')}"`,
+      tweet.created_at,
+      tweet.view_count || 0,
+      tweet.like_count || 0,
+      tweet.reply_count || 0,
+      tweet.retweet_count || 0,
+      tweet.bookmark_count || 0
     ].join(','));
 
     const csv = [csvHeaders, ...csvRows].join('\n');
@@ -52,7 +59,7 @@ export async function GET(
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=tweet-analysis-${id}.csv`
+        'Content-Disposition': `attachment; filename=tweet-analysis-${queryId}.csv`
       }
     });
 
