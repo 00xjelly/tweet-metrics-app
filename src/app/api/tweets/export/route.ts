@@ -1,14 +1,29 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../db';
-import { tweets } from '../../../../db/schema';
+import { db } from '@/db';
+import { tweets } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { searchParams }: { searchParams: { get: (key: string) => string | null } }
+  request: Request
 ) {
   try {
-    const id = parseInt(searchParams.get('id') || '');
+    const { searchParams } = new URL(request.url);
+    const requestId = searchParams.get('id');
+
+    if (!requestId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing request ID' },
+        { status: 400 }
+      );
+    }
+
+    const id = parseInt(requestId);
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request ID' },
+        { status: 400 }
+      );
+    }
 
     const results = await db.query.tweets.findMany({
       where: eq(tweets.requestId, id),
@@ -17,12 +32,11 @@ export async function GET(
 
     if (results.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'No tweets found for this request' },
+        { success: false, error: 'No tweets found' },
         { status: 404 }
       );
     }
 
-    // Convert to CSV
     const csvHeaders = [
       'Tweet ID',
       'Author',
@@ -37,9 +51,9 @@ export async function GET(
 
     const csvRows = results.map(tweet => [
       tweet.tweetId,
-      tweet.authorUsername,
+      tweet.authorUsername || '',
       `"${(tweet.content || '').replace(/"/g, '""')}"`,
-      tweet.createdAt.toISOString(),
+      tweet.createdAt?.toISOString() || '',
       tweet.metrics?.views || 0,
       tweet.metrics?.likes || 0,
       tweet.metrics?.replies || 0,
