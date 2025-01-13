@@ -3,57 +3,42 @@ import { db } from '@/db';
 import { tweets } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET(
-  request: Request
-) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const requestId = searchParams.get('id');
+export const runtime = 'edge';
 
-    if (!requestId) {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  try {
+    if (!id) {
       return NextResponse.json(
-        { success: false, error: 'Missing request ID' },
+        { success: false, error: 'No request ID provided' },
         { status: 400 }
       );
     }
 
-    const id = parseInt(requestId);
-    if (isNaN(id)) {
+    const requestId = parseInt(id);
+    if (isNaN(requestId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid request ID' },
         { status: 400 }
       );
     }
 
-    const results = await db.query.tweets.findMany({
-      where: eq(tweets.requestId, id),
-      orderBy: (tweets, { desc }) => [desc(tweets.createdAt)]
-    });
+    const results = await db.select().from(tweets)
+      .where(eq(tweets.requestId, requestId));
 
-    if (results.length === 0) {
+    if (!results || results.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No tweets found' },
         { status: 404 }
       );
     }
 
-    const csvHeaders = [
-      'Tweet ID',
-      'Author',
-      'Content',
-      'Created At',
-      'Views',
-      'Likes',
-      'Replies',
-      'Retweets',
-      'Bookmarks'
-    ].join(',');
-
     const csvRows = results.map(tweet => [
       tweet.tweetId,
-      tweet.authorUsername || '',
-      `"${(tweet.content || '').replace(/"/g, '""')}"`,
-      tweet.createdAt?.toISOString() || '',
+      tweet.authorUsername,
+      tweet.content,
       tweet.metrics?.views || 0,
       tweet.metrics?.likes || 0,
       tweet.metrics?.replies || 0,
@@ -61,15 +46,15 @@ export async function GET(
       tweet.metrics?.bookmarks || 0
     ].join(','));
 
+    const csvHeaders = ['Tweet ID', 'Author', 'Content', 'Views', 'Likes', 'Replies', 'Retweets', 'Bookmarks'].join(',');
     const csv = [csvHeaders, ...csvRows].join('\n');
 
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=tweet-analysis-${id}.csv`
+        'Content-Disposition': `attachment; filename="tweets-${id}.csv"`
       }
     });
-
   } catch (error) {
     console.error('Error exporting tweets:', error);
     return NextResponse.json(
