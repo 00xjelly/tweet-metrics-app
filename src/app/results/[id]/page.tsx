@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { searchQueries } from '@/db/schema';
+import { analyticsRequests } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { ExportButton } from '@/components/results/export-button';
 
@@ -8,17 +8,17 @@ export default async function ResultsPage({
 }: {
   params: { id: string };
 }) {
-  const queryId = parseInt(params.id);
+  const requestId = parseInt(params.id);
   
-  const query = await db.query.searchQueries.findFirst({
-    where: eq(searchQueries.id, queryId)
+  const request = await db.query.analyticsRequests.findFirst({
+    where: eq(analyticsRequests.id, requestId)
   });
 
-  if (!query) {
+  if (!request) {
     return (
       <div className="p-4">
-        <h1 className="text-xl font-bold mb-4">Query Not Found</h1>
-        <p>The requested query could not be found.</p>
+        <h1 className="text-xl font-bold mb-4">Request Not Found</h1>
+        <p>The requested analysis could not be found.</p>
       </div>
     );
   }
@@ -33,17 +33,20 @@ export default async function ResultsPage({
       {/* Status indicator */}
       <div className="mb-4">
         <span className="font-semibold">Status: </span>
-        <span className={query.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}>
-          {query.status}
+        <span className={request.status.stage === 'completed' ? 'text-green-600' : 'text-yellow-600'}>
+          {request.status.stage}
         </span>
       </div>
 
-      {/* Query Details */}
+      {/* Request Details */}
       <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-2">Query Details</h2>
+        <h2 className="text-lg font-semibold mb-2">Request Details</h2>
         <div className="bg-gray-50 p-4 rounded-lg">
-          <p><span className="font-medium">Query Type:</span> {query.queryType}</p>
-          <p><span className="font-medium">Created At:</span> {query.createdAt.toLocaleString()}</p>
+          <p><span className="font-medium">URLs:</span> {request.urls.length} tweets</p>
+          <p><span className="font-medium">Created At:</span> {request.createdAt.toLocaleString()}</p>
+          {request.status.progress > 0 && (
+            <p><span className="font-medium">Progress:</span> {request.status.progress}%</p>
+          )}
         </div>
       </div>
     </div>
