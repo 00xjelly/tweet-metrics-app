@@ -49,11 +49,24 @@ export function SearchForm() {
     return new Promise((resolve) => {
       Papa.parse(file, {
         complete: (results) => {
+          // Extract only the first column (Column A) URLs
           const urlList = results.data
-            .flat()
-            .map(url => String(url).trim())
-            .filter(Boolean);
+            .map(row => {
+              // Get first column value and ensure it's a string
+              const url = String(row[0] || '').trim();
+              // Basic URL validation
+              if (url.startsWith('http') && url.includes('twitter.com')) {
+                return url;
+              }
+              return '';
+            })
+            .filter(Boolean); // Remove empty strings
+
           setUrls(urlList);
+          resolve(null);
+        },
+        error: (error) => {
+          setError('Error parsing CSV: ' + error.message);
           resolve(null);
         }
       });
@@ -85,7 +98,7 @@ export function SearchForm() {
         </div>
 
         <div>
-          <label className="block mb-2">Or upload CSV</label>
+          <label className="block mb-2">Or upload CSV (URLs in Column A)</label>
           <input
             type="file"
             accept=".csv"
