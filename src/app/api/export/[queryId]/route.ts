@@ -11,13 +11,13 @@ export async function GET(
     const queryId = parseInt(params.queryId);
 
     const results = await db.query.tweets.findMany({
-      where: eq(tweets.queryId, queryId),
+      where: eq(tweets.requestId, queryId),
       orderBy: (tweets, { desc }) => [desc(tweets.createdAt)]
     });
 
     if (results.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'No tweets found for this query' },
+        { success: false, error: 'No tweets found for this request' },
         { status: 404 }
       );
     }
