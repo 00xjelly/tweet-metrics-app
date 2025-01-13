@@ -38,9 +38,13 @@ export async function GET(request: Request) {
     // Convert to CSV
     const csvHeaders = [
       'Tweet ID',
-      'Author',
+      'Tweet URL',
+      'Author Username',
+      'Author Name',
       'Text',
       'Created At',
+      'Is Reply',
+      'Is Quote',
       'Views',
       'Likes',
       'Replies',
@@ -50,9 +54,13 @@ export async function GET(request: Request) {
 
     const csvRows = results.map(tweet => [
       tweet.tweet_id,
+      tweet.twitter_url || '',
       tweet.author_info?.username || '',
+      tweet.author_info?.name || '',
       `"${(tweet.text || '').replace(/"/g, '""')}"`,
       tweet.created_at,
+      tweet.raw_response?.isReply || false,
+      tweet.raw_response?.isQuote || false,
       tweet.view_count || 0,
       tweet.like_count || 0,
       tweet.reply_count || 0,
