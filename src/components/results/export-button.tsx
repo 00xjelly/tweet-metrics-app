@@ -9,8 +9,8 @@ interface ExportButtonProps {
 export function ExportButton({ queryId }: ExportButtonProps) {
   const handleExport = async () => {
     try {
-      // Get the CSV data
-      const response = await fetch(`/api/tweets/${queryId}/export`);
+      // Get the CSV data using query parameter
+      const response = await fetch(`/api/tweets/export?id=${queryId}`);
       
       if (!response.ok) {
         throw new Error('Export failed');
