@@ -35,43 +35,16 @@ export async function GET(request: Request) {
       );
     }
 
-    // Convert to CSV
-    const csvHeaders = [
-      'Tweet ID',
-      'Tweet URL',
-      'Author',
-      'Text',
-      'Created At',
-      'Is Reply',
-      'Is Quote',
-      'Views',
-      'Likes',
-      'Replies',
-      'Retweets',
-      'Quote Count'
-    ].join(',');
+    // Convert to CSV with only URLs for re-import compatibility
+    const csvHeaders = ['URL'];
+    const csvRows = results.map(tweet => [tweet.twitter_url || '']);
 
-    const csvRows = results.map(tweet => [
-      tweet.tweet_id,
-      tweet.twitter_url || '',
-      tweet.author_info?.username || '',
-      `"${(tweet.text || '').replace(/"/g, '""')}"`,
-      tweet.created_at,
-      tweet.raw_response?.isReply || false,
-      tweet.raw_response?.isQuote || false,
-      tweet.view_count || 0,
-      tweet.like_count || 0,
-      tweet.reply_count || 0,
-      tweet.retweet_count || 0,
-      tweet.quote_count || 0
-    ].join(','));
-
-    const csv = [csvHeaders, ...csvRows].join('\n');
+    const csv = [csvHeaders.join(','), ...csvRows.map(row => row.join(','))].join('\n');
 
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename=tweet-analysis-${queryId}.csv`
+        'Content-Disposition': `attachment; filename=tweet-urls-${queryId}.csv`
       }
     });
 
