@@ -10,7 +10,7 @@ export function ExportButton({ queryId }: ExportButtonProps) {
   const handleExport = async () => {
     try {
       // Get the CSV data
-      const response = await fetch(`/api/tweets/export/${queryId}`);
+      const response = await fetch(`/api/tweets/${queryId}/export`);
       
       if (!response.ok) {
         throw new Error('Export failed');
