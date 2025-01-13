@@ -1,82 +1,53 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/db';
+import { db } from '@/db';
+import { analyticsRequests } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const runtime = 'edge';
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
 
+  try {
     if (!id) {
-      console.error('No ID provided');
       return NextResponse.json(
-        { success: false, error: 'Request ID is required' },
+        { success: false, error: 'No request ID provided' },
         { status: 400 }
       );
     }
 
-    console.log('Fetching analytics request with ID:', id);
-
-    // Get analytics request
-    const { data: analyticsRequest, error: requestError } = await supabase
-      .from('analytics_requests')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (requestError) {
-      console.error('Error fetching analytics request:', requestError);
+    const requestId = parseInt(id);
+    if (isNaN(requestId)) {
       return NextResponse.json(
-        { success: false, error: 'Request not found', details: requestError.message },
-        { status: 404 }
+        { success: false, error: 'Invalid request ID' },
+        { status: 400 }
       );
     }
 
-    if (!analyticsRequest) {
-      console.error('No analytics request found for ID:', id);
+    const result = await db.select().from(analyticsRequests)
+      .where(eq(analyticsRequests.id, requestId));
+
+    if (!result || result.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Request not found' },
         { status: 404 }
       );
     }
 
-    console.log('Found analytics request:', analyticsRequest);
-
-    // Get tweets if processing is completed
-    let tweets = [];
-    if (analyticsRequest.status?.stage === 'completed') {
-      console.log('Fetching associated tweets');
-      // Query based on the analytics request ID instead of URL
-      const { data: tweetData, error: tweetsError } = await supabase
-        .from('tweets')
-        .select('*')
-        .eq('analytics_request_id', id); // We need to add this column to our tweets table
-
-      if (tweetsError) {
-        console.error('Error fetching tweets:', tweetsError);
-      } else {
-        tweets = tweetData;
-        console.log('Found tweets:', tweetData);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       data: {
-        status: analyticsRequest.status,
-        tweets: analyticsRequest.status?.stage === 'completed' ? tweets : undefined
+        id: result[0].id,
+        status: result[0].status,
+        urls: result[0].urls
       }
     });
 
   } catch (error) {
-    console.error('Error in status endpoint:', error);
+    console.error('Error fetching status:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch status', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
+      { success: false, error: 'Failed to fetch status' },
       { status: 500 }
     );
   }
