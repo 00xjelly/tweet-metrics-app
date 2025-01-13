@@ -45,12 +45,18 @@ export function SearchForm() {
     setUrls(lines);
   };
 
-  const isValidTwitterUrl = (url: string): boolean => {
+  const isValidTweetUrl = (url: string): boolean => {
     try {
-      const parsedUrl = new URL(url);
+      const urlStr = url.trim();
+      // Extract URLs from text that might contain them
+      const urlMatch = urlStr.match(/https?:\/\/(twitter\.com|x\.com)\/[^\s/]+\/status\/\d+/);
+      if (!urlMatch) return false;
+      
+      // Validate the extracted URL
+      const parsedUrl = new URL(urlMatch[0]);
       return (
         parsedUrl.protocol === 'https:' &&
-        parsedUrl.hostname === 'twitter.com' &&
+        (parsedUrl.hostname === 'twitter.com' || parsedUrl.hostname === 'x.com') &&
         parsedUrl.pathname.includes('/status/')
       );
     } catch {
@@ -58,25 +64,31 @@ export function SearchForm() {
     }
   };
 
+  const extractUrls = (text: string): string[] => {
+    const matches = text.match(/https?:\/\/(twitter\.com|x\.com)\/[^\s/]+\/status\/\d+/g);
+    return matches || [];
+  };
+
   const handleFileInput = async (file: File) => {
     return new Promise((resolve) => {
       Papa.parse(file, {
+        skipEmptyLines: true,
         complete: (results) => {
-          console.log('Parsed CSV data:', results.data);
+          console.log('Raw CSV data:', results.data);
           
-          // Extract only the first column (Column A) URLs
+          // Process each row to find valid URLs
           const urlList = results.data
-            .map(row => {
-              if (!Array.isArray(row) || !row[0]) return '';
-              const url = String(row[0]).trim();
-              return isValidTwitterUrl(url) ? url : '';
+            .flatMap(row => {
+              // Join the row in case URLs are split across columns
+              const rowText = Array.isArray(row) ? row.join(' ') : String(row);
+              return extractUrls(rowText);
             })
-            .filter(Boolean);
+            .filter(url => isValidTweetUrl(url));
 
-          console.log('Filtered URLs:', urlList);
+          console.log('Extracted URLs:', urlList);
 
           if (urlList.length === 0) {
-            setError('No valid Twitter URLs found in Column A. URLs should be in the format https://twitter.com/username/status/...');
+            setError('No valid Twitter/X URLs found. URLs should be in the format https://twitter.com/username/status/... or https://x.com/username/status/...');
           } else {
             setUrls(urlList);
           }
@@ -117,7 +129,7 @@ export function SearchForm() {
         <div>
           <label className="block mb-2">Or upload CSV</label>
           <div className="text-sm text-gray-600 mb-2">
-            Place tweet URLs in Column A (format: https://twitter.com/username/status/...)
+            Accepts Twitter and X URLs (format: https://twitter.com/username/status/... or https://x.com/username/status/...)
           </div>
           <input
             type="file"
