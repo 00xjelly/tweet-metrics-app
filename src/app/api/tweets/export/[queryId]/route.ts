@@ -33,13 +33,13 @@ export async function GET(
     const csvHeaders = [
       'Tweet ID',
       'Author',
-      'Content',
+      'Text',
       'Created At',
       'Views',
       'Likes',
       'Replies',
       'Retweets',
-      'Bookmarks'
+      'Quote Count'
     ].join(',');
 
     const csvRows = results.map(tweet => [
@@ -51,7 +51,7 @@ export async function GET(
       tweet.like_count || 0,
       tweet.reply_count || 0,
       tweet.retweet_count || 0,
-      tweet.bookmark_count || 0
+      tweet.quote_count || 0
     ].join(','));
 
     const csv = [csvHeaders, ...csvRows].join('\n');
