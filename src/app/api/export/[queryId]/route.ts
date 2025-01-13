@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { tweets } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { supabase } from '@/lib/db';
 
 export async function GET(
   request: Request,
@@ -10,12 +8,16 @@ export async function GET(
   try {
     const queryId = parseInt(params.queryId);
 
-    const results = await db.query.tweets.findMany({
-      where: eq(tweets.requestId, queryId),
-      orderBy: (tweets, { desc }) => [desc(tweets.createdAt)]
-    });
+    // Using Supabase client instead of Drizzle
+    const { data: results, error } = await supabase
+      .from('tweets')
+      .select('*')
+      .eq('request_id', queryId)
+      .order('created_at', { ascending: false });
 
-    if (results.length === 0) {
+    if (error) throw error;
+
+    if (!results || results.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No tweets found for this request' },
         { status: 404 }
@@ -36,10 +38,10 @@ export async function GET(
     ].join(',');
 
     const csvRows = results.map(tweet => [
-      tweet.tweetId,
-      tweet.authorUsername,
+      tweet.tweet_id,
+      tweet.author_username,
       `"${(tweet.content || '').replace(/"/g, '""')}"`,
-      tweet.createdAt.toISOString(),
+      tweet.created_at,
       tweet.metrics?.views || 0,
       tweet.metrics?.likes || 0,
       tweet.metrics?.replies || 0,
