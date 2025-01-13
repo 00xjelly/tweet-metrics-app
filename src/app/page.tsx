@@ -1,5 +1,9 @@
-import { SearchSection } from '@/components/search/section';
+import { SearchForm } from '../components/search/search-form';
 
-export default function HomePage() {
-  return <SearchSection />;
+export default function Home() {
+  return (
+    <main className="min-h-screen">
+      <SearchForm />
+    </main>
+  );
 }
