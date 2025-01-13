@@ -27,7 +27,7 @@ export default async function ResultsPage({
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold">Analysis Results</h1>
-        <ExportButton queryId={params.id} />
+        <ExportButton requestId={params.id} />
       </div>
       
       {/* Status indicator */}
