@@ -26,6 +26,15 @@ function validateTwitterUrl(url: string): { isValid: boolean; reason?: string } 
   }
 }
 
+function removeDuplicates(urls: string[]): string[] {
+  const seen = new Set<string>();
+  return urls.filter(url => {
+    if (seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+}
+
 export async function parseCSVFile(fileContent: string): Promise<CSVParseResult> {
   return new Promise((resolve) => {
     const validUrls: string[] = [];
@@ -72,13 +81,13 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
         });
 
         resolve({
-          validUrls: [...new Set(validUrls)], // Remove duplicates
+          validUrls: removeDuplicates(validUrls),
           invalidUrls,
           errors,
           stats
         });
       },
-      error: function(error) {
+      error: function(error: Papa.ParseError) {
         resolve({
           validUrls: [],
           invalidUrls: [],
