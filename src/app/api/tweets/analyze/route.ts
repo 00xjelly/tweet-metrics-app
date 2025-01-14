@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { z } from 'zod';
 import { getTweetData } from '@/lib/twitter/scraper';
-import { ApiTweetResponse } from '@/types/twitter';
 
 const RequestSchema = z.object({
   urls: z.array(z.string().url()).min(1)
@@ -57,7 +56,7 @@ export async function POST(request: Request) {
       for (const url of urls) {
         try {
           console.log('Processing URL:', url);
-          const apiResponse = await getTweetData(url) as ApiTweetResponse[];
+          const apiResponse = await getTweetData(url);
           console.log('Got API response:', apiResponse);
           
           if (apiResponse?.[0]?.type === 'tweet') {
