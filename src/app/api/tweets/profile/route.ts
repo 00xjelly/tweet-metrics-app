@@ -6,17 +6,17 @@ import { ProfileSearchParams } from '@/types/twitter';
 export const runtime = 'edge';
 
 export async function POST(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json(
+      { success: false, error: 'Request ID is required' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Request ID is required' },
-        { status: 400 }
-      );
-    }
-
     // Get the analytics request
     const { data: analyticsRequest, error: fetchError } = await supabase
       .from('analytics_requests')
@@ -108,19 +108,17 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error in profile search:', error);
 
-    if (id) {
-      await supabase
-        .from('analytics_requests')
-        .update({
-          status: {
-            stage: 'failed',
-            error: error instanceof Error ? error.message : 'Unknown error',
-            completedAt: new Date().toISOString()
-          },
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-    }
+    await supabase
+      .from('analytics_requests')
+      .update({
+        status: {
+          stage: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          completedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
 
     return NextResponse.json(
       { success: false, error: 'Failed to process profile search request' },
