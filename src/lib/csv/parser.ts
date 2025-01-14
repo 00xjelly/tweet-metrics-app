@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import { ParseConfig, ParseResult, ParseError } from 'papaparse';
 import { ClassifiedUrl, batchClassifyUrls } from '../twitter/url-classifier';
 
 interface CSVParseResult {
@@ -10,16 +9,23 @@ interface CSVParseResult {
   skippedRows: number;
 }
 
+type ParseError = {
+  message: string;
+  type: string;
+  code: string;
+  row?: number;
+};
+
 export async function parseCSVFile(fileContent: string): Promise<CSVParseResult> {
   return new Promise((resolve) => {
     const rawUrls: string[] = [];
     const errors: string[] = [];
     let skippedRows = 0;
 
-    const config: ParseConfig = {
-      skipEmptyLines: true,
-      delimiter: '',  // auto-detect
-      complete: (results: ParseResult<any>) => {
+    Papa.parse(fileContent, {
+      skipEmptyLines: 'greedy',
+      delimitersToGuess: [',', '\t', '|', ';'],
+      complete: (results) => {
         results.data.forEach((row: any, index: number) => {
           try {
             // Handle both array and object formats that Papaparse might return
@@ -96,9 +102,7 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           skippedRows: 0
         });
       }
-    };
-
-    Papa.parse(fileContent, config);
+    });
   });
 }
 
