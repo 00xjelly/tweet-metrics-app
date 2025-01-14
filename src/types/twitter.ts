@@ -13,48 +13,6 @@ export interface TweetMetrics {
   view_count: number;
 }
 
-export interface TweetMedia {
-  type: string;
-  key?: string;
-  url?: string;
-  preview_image_url?: string;
-}
-
-export interface TweetAuthor {
-  id: string;
-  name: string;
-  username: string;
-  profile_image_url?: string;
-  verified?: boolean;
-}
-
-export interface ApiTweetResponse {
-  type: 'tweet';
-  id: string;
-  text: string;
-  twitterUrl: string;
-  source: string;
-  retweetCount: number;
-  replyCount: number;
-  likeCount: number;
-  quoteCount: number;
-  viewCount: string | number;
-  bookmarkCount: number;
-  createdAt: string;
-  lang: string;
-  conversationId: string;
-  author: TweetAuthor;
-  entities?: {
-    media?: TweetMedia[];
-  };
-  extendedEntities?: {
-    media?: TweetMedia[];
-  };
-  attachments?: {
-    media_keys?: string[];
-  };
-}
-
 export interface TweetData {
   id: string;
   author_id: string;
