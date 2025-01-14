@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       throw new Error('Analytics request not found');
     }
 
-    const { profileUrls, ...params } = analyticsRequest.parameters as ProfileSearchParams;
+    const { profileUrls, searchParams: params } = analyticsRequest.parameters as ProfileSearchParams;
 
     if (!profileUrls?.length) {
       throw new Error('No profile URLs provided');
