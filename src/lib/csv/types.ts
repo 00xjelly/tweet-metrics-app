@@ -1,3 +1,5 @@
+import type { TwitterUrl } from '../twitter/url-classifier';
+
 export interface CSVParseResult {
   validUrls: string[];
   invalidUrls: string[];
@@ -10,14 +12,8 @@ export interface CSVParseResult {
   };
 }
 
-export interface URLParseError {
-  row: number;
-  url: string;
-  reason: string;
-}
-
-export interface BatchProcessResult extends CSVParseResult {
-  profileUrls: string[];
-  postUrls: string[];
-  batchId?: string;
+export interface CSVProcessResult extends CSVParseResult {
+  profiles: TwitterUrl[];
+  posts: TwitterUrl[];
+  classified: TwitterUrl[];
 }

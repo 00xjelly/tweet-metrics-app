@@ -1,27 +1,15 @@
 import Papa from 'papaparse';
-import type { CSVParseResult } from './types';
+import type { CSVParseResult, CSVProcessResult } from './types';
+import { classifyUrls } from '../twitter/url-classifier';
 
-function validateTwitterUrl(url: string): { isValid: boolean; reason?: string } {
+function validateURL(url: string): { isValid: boolean; reason?: string } {
   try {
-    const urlObj = new URL(url);
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
     if (!['twitter.com', 'x.com'].includes(urlObj.hostname)) {
       return { isValid: false, reason: 'Not a Twitter/X URL' };
     }
     return { isValid: true };
   } catch {
-    // Try to fix common URL issues
-    if (!url.startsWith('http')) {
-      const fixedUrl = `https://${url}`;
-      try {
-        const urlObj = new URL(fixedUrl);
-        if (!['twitter.com', 'x.com'].includes(urlObj.hostname)) {
-          return { isValid: false, reason: 'Not a Twitter/X URL' };
-        }
-        return { isValid: true };
-      } catch {
-        return { isValid: false, reason: 'Invalid URL format' };
-      }
-    }
     return { isValid: false, reason: 'Invalid URL format' };
   }
 }
@@ -35,7 +23,7 @@ function removeDuplicates(urls: string[]): string[] {
   });
 }
 
-export async function parseCSVFile(fileContent: string): Promise<CSVParseResult> {
+export async function parseCSVFile(fileContent: string): Promise<CSVProcessResult> {
   return new Promise((resolve) => {
     const validUrls: string[] = [];
     const invalidUrls: string[] = [];
@@ -61,7 +49,7 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
             }
 
             const url = cellContent.trim();
-            const validation = validateTwitterUrl(url);
+            const validation = validateURL(url);
 
             if (validation.isValid) {
               validUrls.push(url.startsWith('http') ? url : `https://${url}`);
@@ -79,11 +67,22 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           }
         });
 
+        const uniqueUrls = removeDuplicates(validUrls);
+        const { profiles, posts, invalid } = classifyUrls(uniqueUrls);
+
+        // Add any classification errors to our error list
+        invalid.forEach(item => {
+          errors.push(`Invalid Twitter URL structure: ${item.originalUrl}`);
+        });
+
         resolve({
-          validUrls: removeDuplicates(validUrls),
+          validUrls: uniqueUrls,
           invalidUrls,
           errors,
-          stats
+          stats,
+          profiles,
+          posts,
+          classified: [...profiles, ...posts]
         });
       }
     });
