@@ -1,4 +1,4 @@
-import Papa, { ParseResult, ParseError, ParseConfig } from 'papaparse';
+import Papa from 'papaparse';
 import type { CSVParseResult } from './types';
 
 function validateTwitterUrl(url: string): { isValid: boolean; reason?: string } {
@@ -47,12 +47,12 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
       skippedCount: 0
     };
 
-    const config: ParseConfig<string[]> = {
+    Papa.parse(fileContent, {
       skipEmptyLines: true,
-      complete(results: ParseResult<string[]>) {
+      complete(results) {
         stats.totalRows = results.data.length;
 
-        results.data.forEach((row, index) => {
+        results.data.forEach((row: any, index: number) => {
           try {
             const cellContent = row[0];
             if (!cellContent || typeof cellContent !== 'string') {
@@ -85,22 +85,7 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           errors,
           stats
         });
-      },
-      error(error: Error) {
-        resolve({
-          validUrls: [],
-          invalidUrls: [],
-          errors: [`CSV parsing error: ${error.message || 'Unknown error'}`],
-          stats: {
-            totalRows: 0,
-            validCount: 0,
-            invalidCount: 0,
-            skippedCount: 0
-          }
-        });
       }
-    };
-
-    Papa.parse(fileContent, config);
+    });
   });
 }
