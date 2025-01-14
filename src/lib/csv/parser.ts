@@ -61,8 +61,7 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
               skippedRows++;
             }
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            errors.push(`Row ${index + 1}: Failed to process - ${errorMessage}`);
+            errors.push(`Row ${index + 1}: Failed to process - ${error.message}`);
             skippedRows++;
           }
         });
