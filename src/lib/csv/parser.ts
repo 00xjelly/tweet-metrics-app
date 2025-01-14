@@ -9,13 +9,6 @@ interface CSVParseResult {
   skippedRows: number;
 }
 
-type ParseError = {
-  message: string;
-  type: string;
-  code: string;
-  row?: number;
-};
-
 export async function parseCSVFile(fileContent: string): Promise<CSVParseResult> {
   return new Promise((resolve) => {
     const rawUrls: string[] = [];
@@ -91,9 +84,8 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           skippedRows
         });
       },
-      error: (error: ParseError) => {
-        const errorMessage = error.message || `CSV parsing error (${error.type})`;
-        errors.push(errorMessage);
+      error: (error) => {
+        errors.push(`CSV parsing error: ${error.message}`);
         resolve({
           profiles: [],
           posts: [],
