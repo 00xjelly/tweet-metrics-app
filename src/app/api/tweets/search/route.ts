@@ -28,9 +28,9 @@ export async function POST(request: Request) {
       throw new Error('Analytics request not found');
     }
 
-    const searchParams = analyticsRequest.parameters as MetricSearchParams;
+    const params = analyticsRequest.parameters as MetricSearchParams;
 
-    if (!searchParams.keywords?.length) {
+    if (!params.keywords?.length) {
       throw new Error('No keywords provided for search');
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       .eq('id', id);
 
     // Perform the search
-    const tweets = await searchTweetsByKeyword(searchParams);
+    const tweets = await searchTweetsByKeyword(params);
 
     let processedCount = 0;
 
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
           raw_data: tweet,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          search_query: searchParams.keywords.join(', ')
+          search_query: params.keywords.join(', ')
         });
 
       if (upsertError) {

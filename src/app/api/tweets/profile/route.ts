@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       throw new Error('Analytics request not found');
     }
 
-    const { profileUrls, ...searchParams } = analyticsRequest.parameters as ProfileSearchParams;
+    const { profileUrls, ...params } = analyticsRequest.parameters as ProfileSearchParams;
 
     if (!profileUrls?.length) {
       throw new Error('No profile URLs provided');
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       .eq('id', id);
 
     let processedCount = 0;
-    const tweets = await getMultipleProfileTweets(profileUrls, searchParams);
+    const tweets = await getMultipleProfileTweets(profileUrls, params);
 
     // Store tweets in database
     for (const tweet of tweets) {
