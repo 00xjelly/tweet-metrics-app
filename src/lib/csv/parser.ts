@@ -1,5 +1,5 @@
-import Papa from 'papaparse';
-import type { CSVParseResult, URLParseError } from './types';
+import Papa, { ParseResult, ParseError, ParseConfig } from 'papaparse';
+import type { CSVParseResult } from './types';
 
 function validateTwitterUrl(url: string): { isValid: boolean; reason?: string } {
   try {
@@ -47,14 +47,13 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
       skippedCount: 0
     };
 
-    Papa.parse<string[]>(fileContent, {
-      skipEmptyLines: 'greedy',
-      complete: function(results) {
+    const config: ParseConfig<string[]> = {
+      skipEmptyLines: true,
+      complete(results: ParseResult<string[]>) {
         stats.totalRows = results.data.length;
 
         results.data.forEach((row, index) => {
           try {
-            // We expect URLs in the first column
             const cellContent = row[0];
             if (!cellContent || typeof cellContent !== 'string') {
               stats.skippedCount++;
@@ -87,7 +86,7 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           stats
         });
       },
-      error: function(error: Papa.ParseError) {
+      error(error: Error) {
         resolve({
           validUrls: [],
           invalidUrls: [],
@@ -100,6 +99,8 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           }
         });
       }
-    });
+    };
+
+    Papa.parse(fileContent, config);
   });
 }
