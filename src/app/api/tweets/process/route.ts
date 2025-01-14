@@ -8,8 +8,6 @@ export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
-  console.log('Processing request for ID:', id);
-
   if (!id) {
     return NextResponse.json(
       { success: false, error: 'Request ID is required' },
@@ -24,8 +22,6 @@ export async function POST(request: Request) {
       .select('*')
       .eq('id', id)
       .single();
-
-    console.log('Found analytics request:', analyticsRequest);
 
     if (fetchError || !analyticsRequest) {
       throw new Error('Analytics request not found');
@@ -47,16 +43,16 @@ export async function POST(request: Request) {
       })
       .eq('id', id);
 
-    console.log('Updated status to processing');
     let processedCount = 0;
 
     for (const url of urls) {
       try {
         console.log('Processing URL:', url);
-        const tweetData = await getTweetData(url);
+        const tweetDataArray = await getTweetData(url);
+        const tweet = tweetDataArray?.[0];
         
-        if (tweetData) {
-          console.log('Got tweet data:', tweetData);
+        if (tweet?.type === 'tweet') {
+          console.log('Got tweet data:', tweet);
           
           // Store complete data in tweets table
           const { error: upsertError } = await supabase
@@ -64,19 +60,19 @@ export async function POST(request: Request) {
             .upsert({
               id: crypto.randomUUID(), // Unique ID for our record
               url: url,
-              tweet_id: tweetData.id,
-              author_id: tweetData.author_id,
-              username: tweetData.username,
-              text: tweetData.text,
-              tweet_created_at: tweetData.created_at,
-              impression_count: tweetData.public_metrics?.impression_count || 0,
-              like_count: tweetData.public_metrics?.like_count || 0,
-              reply_count: tweetData.public_metrics?.reply_count || 0,
-              retweet_count: tweetData.public_metrics?.retweet_count || 0,
-              quote_count: tweetData.public_metrics?.quote_count || 0,
-              bookmark_count: tweetData.public_metrics?.bookmark_count || 0,
-              view_count: tweetData.public_metrics?.view_count || 0,
-              raw_data: tweetData, // Store complete raw response
+              tweet_id: tweet.id,
+              author_id: tweet.author.id,
+              username: tweet.author.username,
+              text: tweet.text,
+              tweet_created_at: tweet.createdAt,
+              impression_count: tweet.viewCount || 0,
+              like_count: tweet.likeCount || 0,
+              reply_count: tweet.replyCount || 0,
+              retweet_count: tweet.retweetCount || 0,
+              quote_count: tweet.quoteCount || 0,
+              bookmark_count: tweet.bookmarkCount || 0,
+              view_count: typeof tweet.viewCount === 'string' ? parseInt(tweet.viewCount) : tweet.viewCount || 0,
+              raw_data: tweet, // Store complete raw response
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
