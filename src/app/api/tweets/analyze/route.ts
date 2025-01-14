@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { z } from 'zod';
 import { getTweetData } from '@/lib/twitter/scraper';
+import { ApiTweetResponse } from '@/types/twitter';
 
 const RequestSchema = z.object({
   urls: z.array(z.string().url()).min(1)
@@ -56,10 +57,10 @@ export async function POST(request: Request) {
       for (const url of urls) {
         try {
           console.log('Processing URL:', url);
-          const apiResponse = await getTweetData(url);
+          const apiResponse = await getTweetData(url) as ApiTweetResponse[];
           console.log('Got API response:', apiResponse);
           
-          if (apiResponse && apiResponse[0] && apiResponse[0].type === 'tweet') {
+          if (apiResponse?.[0]?.type === 'tweet') {
             const tweet = apiResponse[0];
             console.log('Processing tweet:', tweet);
             
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
                 reply_count: tweet.replyCount,
                 like_count: tweet.likeCount,
                 quote_count: tweet.quoteCount,
-                view_count: parseInt(tweet.viewCount) || 0,
+                view_count: typeof tweet.viewCount === 'string' ? parseInt(tweet.viewCount) : tweet.viewCount || 0,
                 bookmark_count: tweet.bookmarkCount,
                 created_at: new Date(tweet.createdAt).toISOString(),
                 updated_at: new Date().toISOString(),
