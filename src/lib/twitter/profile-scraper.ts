@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { TweetData, ProfileSearchParams } from '@/types/twitter';
+import { TweetData, ProfileSearchParams, SearchParams } from '@/types/twitter';
 import { validateSearchParams, extractProfileUsername } from './validator';
 
 interface ProfileScraperOptions {
@@ -9,7 +9,7 @@ interface ProfileScraperOptions {
 
 export async function getProfileTweets(
   profileUrl: string,
-  params: ProfileSearchParams,
+  params: SearchParams,
   options: ProfileScraperOptions = {}
 ): Promise<TweetData[]> {
   try {
@@ -19,7 +19,7 @@ export async function getProfileTweets(
     }
 
     const { isValid, errors } = validateSearchParams(params);
-    if (!errors) {
+    if (!isValid) {
       throw new Error(`Invalid search parameters: ${errors.join(', ')}`);
     }
 
@@ -90,7 +90,7 @@ export async function getProfileTweets(
 
 export async function getMultipleProfileTweets(
   profileUrls: string[],
-  params: ProfileSearchParams,
+  params: SearchParams,
   options: ProfileScraperOptions = {}
 ): Promise<TweetData[]> {
   const maxConcurrent = options.maxConcurrency || 2;

@@ -29,8 +29,10 @@ export interface SearchParams extends DateFilter {
   minImpressions?: number;
 }
 
-export interface ProfileSearchParams extends SearchParams {
+// Separating profile URLs from search params since they're handled differently
+export interface ProfileSearchParams {
   profileUrls: string[];
+  searchParams: SearchParams;
 }
 
 export interface PostSearchParams extends SearchParams {
