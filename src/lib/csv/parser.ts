@@ -1,14 +1,17 @@
 import Papa from 'papaparse';
+import { ClassifiedUrl, batchClassifyUrls } from '../twitter/url-classifier';
 
 interface CSVParseResult {
-  urls: string[];
+  profiles: ClassifiedUrl[];
+  posts: ClassifiedUrl[];
+  invalid: ClassifiedUrl[];
   errors: string[];
   skippedRows: number;
 }
 
 export async function parseCSVFile(fileContent: string): Promise<CSVParseResult> {
   return new Promise((resolve) => {
-    const urls: string[] = [];
+    const rawUrls: string[] = [];
     const errors: string[] = [];
     let skippedRows = 0;
 
@@ -34,14 +37,14 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
               try {
                 // Attempt to create a URL object to validate
                 new URL(cleanedUrl);
-                urls.push(cleanedUrl);
+                rawUrls.push(cleanedUrl);
               } catch {
                 // If the URL is invalid but contains twitter.com, try to fix it
                 if (!cleanedUrl.startsWith('http')) {
                   const fixedUrl = `https://${cleanedUrl}`;
                   try {
                     new URL(fixedUrl);
-                    urls.push(fixedUrl);
+                    rawUrls.push(fixedUrl);
                   } catch {
                     errors.push(`Row ${index + 1}: Invalid URL format - ${cleanedUrl}`);
                     skippedRows++;
@@ -63,34 +66,88 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           }
         });
 
+        // Remove duplicates and classify URLs
+        const uniqueUrls = [...new Set(rawUrls)];
+        const { profiles, posts, invalid } = batchClassifyUrls(uniqueUrls);
+
+        // Add any invalid URLs to errors
+        invalid.forEach(item => {
+          errors.push(`Invalid URL structure: ${item.url}`);
+        });
+
         resolve({
-          urls: [...new Set(urls)], // Remove duplicates
+          profiles,
+          posts,
+          invalid,
           errors,
           skippedRows
         });
       },
       error: (error) => {
         errors.push(`CSV parsing error: ${error.message}`);
-        resolve({ urls: [], errors, skippedRows: 0 });
+        resolve({
+          profiles: [],
+          posts: [],
+          invalid: [],
+          errors,
+          skippedRows: 0
+        });
       }
     });
   });
 }
 
-export function validateBatchSize(urls: string[], maxBatchSize: number = 100): {
+interface BatchValidation {
   isValid: boolean;
   error?: string;
-} {
-  if (urls.length === 0) {
-    return { isValid: false, error: 'No valid URLs found in the CSV' };
-  }
+  stats?: {
+    totalUrls: number;
+    profileCount: number;
+    postCount: number;
+    invalidCount: number;
+  };
+}
 
-  if (urls.length > maxBatchSize) {
+export function validateBatchSize(
+  profiles: ClassifiedUrl[],
+  posts: ClassifiedUrl[],
+  maxBatchSize: number = 100
+): BatchValidation {
+  const totalUrls = profiles.length + posts.length;
+
+  if (totalUrls === 0) {
     return { 
-      isValid: false, 
-      error: `Batch size (${urls.length}) exceeds maximum allowed (${maxBatchSize})`
+      isValid: false,
+      error: 'No valid URLs found in the CSV',
+      stats: {
+        totalUrls: 0,
+        profileCount: 0,
+        postCount: 0,
+        invalidCount: 0
+      }
     };
   }
 
-  return { isValid: true };
+  if (totalUrls > maxBatchSize) {
+    return { 
+      isValid: false, 
+      error: `Batch size (${totalUrls}) exceeds maximum allowed (${maxBatchSize})`,
+      stats: {
+        totalUrls,
+        profileCount: profiles.length,
+        postCount: posts.length,
+        invalidCount: 0
+      }
+    };
+  }
+
+  return { 
+    isValid: true,
+    stats: {
+      totalUrls,
+      profileCount: profiles.length,
+      postCount: posts.length,
+      invalidCount: 0
+    }
+  };
 }
