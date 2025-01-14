@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { PostCard } from "@/components/post-card"
-import { MetricCard } from "@/components/metric-card"
+import { PostCard } from "../components/post-card"
+import { MetricCard } from "../components/metric-card"
 import { BarChart2, Clock, MessageCircle, Users } from "lucide-react"
 
 interface PostData {
