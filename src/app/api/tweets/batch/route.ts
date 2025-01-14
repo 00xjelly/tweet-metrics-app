@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { parseCSVFile, validateBatchSize } from '@/lib/csv/parser';
+import { UrlType } from '@/lib/twitter/url-classifier';
 
 export const runtime = 'edge';
 
@@ -32,36 +33,83 @@ export async function POST(request: Request) {
       throw new Error('No CSV content provided');
     }
 
-    // Parse CSV file
-    const { urls, errors, skippedRows } = await parseCSVFile(fileContent);
+    // Parse CSV file and classify URLs
+    const { profiles, posts, invalid, errors, skippedRows } = await parseCSVFile(fileContent);
     
     // Validate batch size
-    const validation = validateBatchSize(urls);
+    const validation = validateBatchSize(profiles, posts);
     if (!validation.isValid) {
       throw new Error(validation.error);
     }
 
-    // Store the URLs and any parsing errors in the analytics request
+    // Store the URLs, classifications, and any parsing errors in the analytics request
     await supabase
       .from('analytics_requests')
       .update({
         status: {
           stage: 'initialized',
-          urls,
-          totalCount: urls.length,
+          urlTypes: {
+            profiles: profiles.map(p => p.url),
+            posts: posts.map(p => p.url),
+            invalid: invalid.map(i => i.url)
+          },
+          totalCount: profiles.length + posts.length,
           errors,
           skippedRows,
+          stats: validation.stats,
           processedAt: new Date().toISOString()
         },
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
 
+    // Create sub-requests for each URL type if needed
+    const tasks = [];
+    
+    if (profiles.length > 0) {
+      tasks.push(
+        supabase.from('analytics_requests').insert({
+          parent_id: id,
+          type: 'profile',
+          parameters: {
+            profileUrls: profiles.map(p => p.url),
+            ...analyticsRequest.parameters // Include any search parameters
+          },
+          status: {
+            stage: 'pending',
+            totalCount: profiles.length
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      );
+    }
+
+    if (posts.length > 0) {
+      tasks.push(
+        supabase.from('analytics_requests').insert({
+          parent_id: id,
+          type: 'post',
+          parameters: {
+            postUrls: posts.map(p => p.url),
+            ...analyticsRequest.parameters // Include any search parameters
+          },
+          status: {
+            stage: 'pending',
+            totalCount: posts.length
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      );
+    }
+
+    await Promise.all(tasks);
+
     return NextResponse.json({
       success: true,
       data: {
-        urls,
-        totalCount: urls.length,
+        stats: validation.stats,
         errors,
         skippedRows
       }
