@@ -22,9 +22,10 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { MultiLineInput } from "./multi-line-input"
 
 const profileSearchSchema = z.object({
-  urls: z.string().min(1),
+  urls: z.string().min(1, "Please enter at least one URL"),
   keywords: z.string().optional(),
 })
 
@@ -44,7 +45,13 @@ export function SearchMetricsForm() {
     setIsLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log(values)
+      const urls = values.urls.split('\n')
+        .map(url => url.trim())
+        .filter(url => url.length > 0)
+      console.log({
+        ...values,
+        urls
+      })
     } finally {
       setIsLoading(false)
     }
@@ -77,9 +84,10 @@ export function SearchMetricsForm() {
                 <FormItem>
                   <FormLabel>Profile URLs</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter profile URLs separated by commas" 
+                    <MultiLineInput 
                       {...field} 
+                      description="Enter one profile URL per line. Example:\ntwitter.com/username1\ntwitter.com/username2"
+                      placeholder="twitter.com/username1\ntwitter.com/username2"
                     />
                   </FormControl>
                   <FormMessage />
