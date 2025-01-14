@@ -64,7 +64,8 @@ export class BatchController {
     });
 
     try {
-      for (const [index, batch] of batches.entries()) {
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
         const { results, errors } = await processBatch(batch, processor, this.config);
         
         allResults.push(...results);
@@ -76,7 +77,7 @@ export class BatchController {
             totalProcessed: allResults.length + allErrors.length,
             successCount: allResults.length,
             failureCount: allErrors.length,
-            completedBatches: index + 1,
+            completedBatches: i + 1,
             processingTime: Date.now() - startTime
           }
         });
