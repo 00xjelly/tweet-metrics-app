@@ -66,8 +66,8 @@ export async function parseCSVFile(fileContent: string): Promise<CSVParseResult>
           }
         });
 
-        // Remove duplicates using Array.from for better compatibility
-        const uniqueUrls = Array.from(new Set(rawUrls));
+        // Remove duplicates and classify URLs
+        const uniqueUrls = [...new Set(rawUrls)];
         const { profiles, posts, invalid } = batchClassifyUrls(uniqueUrls);
 
         // Add any invalid URLs to errors
