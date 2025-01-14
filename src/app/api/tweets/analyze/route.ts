@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { z } from 'zod';
 import { getTweetData } from '@/lib/twitter/scraper';
+import { TweetMedia } from '@/types/twitter';
 
 const RequestSchema = z.object({
   urls: z.array(z.string().url()).min(1)
@@ -64,13 +65,16 @@ export async function POST(request: Request) {
             console.log('Processing tweet:', tweet);
             
             // Look for media in various locations of the response
-            let mediaItems = [];
+            let mediaItems: TweetMedia[] = [];
             if (tweet.extendedEntities?.media) {
               mediaItems = tweet.extendedEntities.media;
             } else if (tweet.entities?.media) {
               mediaItems = tweet.entities.media;
             } else if (tweet.attachments?.media_keys) {
-              mediaItems = tweet.attachments.media_keys.map(key => ({ type: 'media', key }));
+              mediaItems = tweet.attachments.media_keys.map(key => ({ 
+                type: 'media', 
+                key
+              }));
             }
             
             console.log('Extracted media items:', mediaItems);
