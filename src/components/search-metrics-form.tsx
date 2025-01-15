@@ -20,6 +20,13 @@ const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
 })
 
+const profileSearchSchema = z.object({
+  username: z.string().min(1, "Please enter a username").transform(username => 
+    username.startsWith('@') ? username.slice(1) : username
+  ),
+  maxItems: z.number().min(1).max(200).default(100)
+})
+
 export function SearchMetricsForm() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"profile" | "post" | "metrics">("post")
@@ -32,8 +39,16 @@ export function SearchMetricsForm() {
     },
   })
 
+  const profileForm = useForm<z.infer<typeof profileSearchSchema>>({
+    resolver: zodResolver(profileSearchSchema),
+    defaultValues: {
+      username: "",
+      maxItems: 100
+    },
+  })
+
   async function onPostSubmit(values: z.infer<typeof postSearchSchema>) {
-    console.log('Form submitted with values:', values); // Debug log
+    console.log('Form submitted with values:', values);
     
     setIsLoading(true)
     try {
@@ -41,14 +56,14 @@ export function SearchMetricsForm() {
         .map(url => url.trim())
         .filter(Boolean)
 
-      console.log('Processing URLs:', urls); // Debug log
+      console.log('Processing URLs:', urls);
 
       const response = await analyzeMetrics({
         type: 'post',
         urls
       })
       
-      console.log('API Response:', response); // Debug log
+      console.log('API Response:', response);
 
       if (response.success) {
         router.push('/results')
@@ -60,10 +75,27 @@ export function SearchMetricsForm() {
     }
   }
 
-  const handleButtonClick = (e: React.MouseEvent) => {
-    console.log('Button clicked'); // Debug log
-    const formData = postForm.getValues();
-    console.log('Current form data:', formData); // Debug log
+  async function onProfileSubmit(values: z.infer<typeof profileSearchSchema>) {
+    console.log('Profile form submitted with values:', values);
+    
+    setIsLoading(true)
+    try {
+      const response = await analyzeMetrics({
+        type: 'profile',
+        username: values.username,
+        maxItems: values.maxItems
+      })
+      
+      console.log('API Response:', response);
+
+      if (response.success) {
+        router.push('/results')
+      }
+    } catch (error) {
+      console.error('Error analyzing profile:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -83,14 +115,66 @@ export function SearchMetricsForm() {
         </TabsTrigger>
       </TabsList>
 
+      <TabsContent value="profile" className="mt-4">
+        <Form {...profileForm}>
+          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+            <FormField
+              control={profileForm.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Twitter Username</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="@username"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={profileForm.control}
+              name="maxItems"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of tweets to analyze (max 200)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="number"
+                      min={1}
+                      max={200}
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing Profile...
+                </>
+              ) : (
+                'Analyze Profile'
+              )}
+            </Button>
+          </form>
+        </Form>
+      </TabsContent>
+
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
           <form 
-            onSubmit={(e) => {
-              console.log('Form submit event triggered'); // Debug log
-              e.preventDefault();
-              postForm.handleSubmit(onPostSubmit)(e);
-            }} 
+            onSubmit={postForm.handleSubmit(onPostSubmit)}
             className="space-y-6"
           >
             <FormField
@@ -113,7 +197,6 @@ export function SearchMetricsForm() {
               type="submit" 
               disabled={isLoading} 
               className="w-full"
-              onClick={handleButtonClick}
             >
               {isLoading ? (
                 <>
