@@ -23,6 +23,7 @@ export default function ResultsPage() {
           {results?.map((post, index) => (
             <MetricCard
               key={index}
+              type="tweet"
               url={post.url}
               author={post.author}
               text={post.text}
