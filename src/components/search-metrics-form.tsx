@@ -1,64 +1,42 @@
 "use client"
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from 'next/navigation'
+import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
-import { MultiLineInput } from "./multi-line-input"
+import { FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { analyzeMetrics } from "../lib/api"
 import { useAnalysis } from "../context/analysis-context"
-
-const postSearchSchema = z.object({
-  urls: z.string().min(1),
-})
 
 export function SearchMetricsForm() {
   const router = useRouter()
   const { setResults } = useAnalysis()
   const [isLoading, setIsLoading] = useState(false)
-
-  // Simplify to just the post form for debugging
-  const form = useForm<z.infer<typeof postSearchSchema>>({
-    resolver: zodResolver(postSearchSchema),
-    defaultValues: {
-      urls: "",
-    },
-  })
+  const [url, setUrl] = useState('')
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log('Form submitted');
+    console.log('Form submitted with URL:', url);
     
-    const formData = new FormData(e.target as HTMLFormElement);
-    const urls = formData.get('urls') as string;
-    
-    if (!urls) {
-      console.log('No URLs provided');
+    if (!url) {
+      console.log('No URL provided');
       return;
     }
 
     setIsLoading(true);
-    console.log('Processing URLs:', urls);
-
     try {
       const response = await analyzeMetrics({
         type: 'post',
-        urls: [urls]
+        urls: [url]
       });
 
       console.log('API Response:', response);
 
       if (response.success && response.data?.posts?.[0]) {
         setResults({
-          url: urls,
+          url: url,
           metrics: response.data.posts[0].metrics
         });
         router.push('/results');
@@ -77,7 +55,8 @@ export function SearchMetricsForm() {
           <FormLabel>Post URL</FormLabel>
           <FormControl>
             <Input 
-              name="urls"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
               placeholder="Enter post URL. Example: twitter.com/username/status/123456789"
             />
           </FormControl>
@@ -86,7 +65,7 @@ export function SearchMetricsForm() {
 
         <Button 
           type="submit" 
-          disabled={isLoading} 
+          disabled={isLoading || !url}
           className="w-full"
         >
           {isLoading ? (
