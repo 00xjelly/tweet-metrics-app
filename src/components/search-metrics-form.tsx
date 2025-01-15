@@ -33,17 +33,23 @@ export function SearchMetricsForm() {
   })
 
   async function onPostSubmit(values: z.infer<typeof postSearchSchema>) {
+    console.log('Form submitted with values:', values); // Debug log
+    
     setIsLoading(true)
     try {
       const urls = values.urls.split('\n')
         .map(url => url.trim())
         .filter(Boolean)
 
+      console.log('Processing URLs:', urls); // Debug log
+
       const response = await analyzeMetrics({
         type: 'post',
         urls
       })
       
+      console.log('API Response:', response); // Debug log
+
       if (response.success) {
         router.push('/results')
       }
@@ -52,6 +58,12 @@ export function SearchMetricsForm() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    console.log('Button clicked'); // Debug log
+    const formData = postForm.getValues();
+    console.log('Current form data:', formData); // Debug log
   }
 
   return (
@@ -73,7 +85,14 @@ export function SearchMetricsForm() {
 
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
-          <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
+          <form 
+            onSubmit={(e) => {
+              console.log('Form submit event triggered'); // Debug log
+              e.preventDefault();
+              postForm.handleSubmit(onPostSubmit)(e);
+            }} 
+            className="space-y-6"
+          >
             <FormField
               control={postForm.control}
               name="urls"
@@ -90,7 +109,12 @@ export function SearchMetricsForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
+              className="w-full"
+              onClick={handleButtonClick}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
