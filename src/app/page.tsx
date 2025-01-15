@@ -1,5 +1,11 @@
+import dynamic from 'next/dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SearchMetricsForm } from "@/components/search-metrics-form"
+
+// Dynamically import the form to avoid server-side rendering issues
+const SearchMetricsForm = dynamic(
+  () => import('@/components/search-metrics-form').then(mod => mod.SearchMetricsForm),
+  { ssr: false }
+)
 
 export default function Home() {
   return (
