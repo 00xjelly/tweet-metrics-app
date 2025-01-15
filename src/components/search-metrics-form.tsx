@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { analyzeMetrics } from "../lib/api"
-import { useAnalysis } from "../context/analysis-context"
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { analyzeMetrics } from '../lib/api'
+import { useAnalysis } from '../context/analysis-context'
 
 export function SearchMetricsForm() {
   const router = useRouter()
@@ -16,57 +16,54 @@ export function SearchMetricsForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [url, setUrl] = useState('')
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log('Form submitted with URL:', url);
-    
-    if (!url) {
-      console.log('No URL provided');
-      return;
-    }
+    if (!url) return
 
-    setIsLoading(true);
+    setIsLoading(true)
+    console.log('Submitting URL:', url)
+
     try {
       const response = await analyzeMetrics({
         type: 'post',
         urls: [url]
-      });
+      })
 
-      console.log('API Response:', response);
+      console.log('API Response:', response)
 
       if (response.success && response.data?.posts?.[0]) {
         setResults({
           url: url,
           metrics: response.data.posts[0].metrics
-        });
-        router.push('/results');
+        })
+        router.push('/results')
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error:', error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <form onSubmit={onSubmit} className="space-y-6">
-        <FormItem>
-          <FormLabel>Post URL</FormLabel>
-          <FormControl>
-            <Input 
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter post URL. Example: twitter.com/username/status/123456789"
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="url">Post URL</Label>
+          <Input
+            id="url"
+            placeholder="Enter tweet URL (e.g., twitter.com/username/status/123456789)"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+        </div>
 
-        <Button 
-          type="submit" 
-          disabled={isLoading || !url}
+        <Button
+          type="submit"
           className="w-full"
+          disabled={isLoading || !url}
         >
           {isLoading ? (
             <>
@@ -74,7 +71,7 @@ export function SearchMetricsForm() {
               Analyzing...
             </>
           ) : (
-            'Analyze Post'
+            'Analyze Tweet'
           )}
         </Button>
       </form>
