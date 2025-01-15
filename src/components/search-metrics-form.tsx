@@ -19,30 +19,41 @@ import { BatchLoadDialog } from "./batch-load-dialog"
 import { MultiLineInput } from "./multi-line-input"
 import { useSavedBatches } from "../lib/hooks/use-saved-batches"
 import { analyzeMetrics } from "../lib/api"
-import { useAnalysisStore } from "../lib/store"
+import { useAnalysis } from "../context/analysis-context"
 
-// ... (keep other schemas)
+const postSearchSchema = z.object({
+  urls: z.string().min(1),
+})
 
 export function SearchMetricsForm() {
   const router = useRouter()
-  const setResults = useAnalysisStore((state) => state.setResults)
-  // ... (keep other state)
+  const { setResults } = useAnalysis()
+  const [activeTab] = useState<"profile" | "post" | "metrics">("post")
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const postForm = useForm<z.infer<typeof postSearchSchema>>({
+    resolver: zodResolver(postSearchSchema),
+    defaultValues: {
+      urls: "",
+    },
+  })
 
   async function onPostSubmit(values: z.infer<typeof postSearchSchema>) {
     setIsLoading(true)
     try {
+      const urls = values.urls.split('\n')
+        .map(url => url.trim())
+        .filter(Boolean)
+
       const response = await analyzeMetrics({
         type: 'post',
-        ...values,
-        urls: values.urls.split('\n').map(url => url.trim()).filter(Boolean),
-        dateRange
+        urls
       })
       
-      // Store results
       if (response.success && response.data?.posts?.[0]) {
         const post = response.data.posts[0]
         setResults({
-          url: post.url || values.urls[0],
+          url: urls[0],
           metrics: post.metrics
         })
         router.push('/results')
@@ -54,5 +65,36 @@ export function SearchMetricsForm() {
     }
   }
 
-  // ... (keep rest of the component)
+  return (
+      <Form {...postForm}>
+        <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
+          <FormField
+            control={postForm.control}
+            name="urls"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Post URLs</FormLabel>
+                <FormControl>
+                  <MultiLineInput 
+                    {...field} 
+                    description="Enter post URLs separated by new lines. Example: https://twitter.com/username/status/123456789"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" disabled={isLoading} className="w-full">
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              'Analyze Posts'
+            )}
+          </Button>
+        </form>
+      </Form>
+  )
 }
