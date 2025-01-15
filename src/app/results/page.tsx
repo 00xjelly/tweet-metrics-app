@@ -1,19 +1,25 @@
+"use client"
+
 import { MetricCard } from "@/components/metric-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart2, Heart, MessageCircle, Repeat2 } from 'lucide-react'
-
-// This will be replaced with real data from API
-const mockPostData = {
-  url: "https://x.com/francescoweb3/status/1879496404089102599",
-  metrics: {
-    likes: 1243,
-    replies: 89,
-    retweets: 156,
-    impressions: 12453
-  }
-}
+import { useAnalysisStore } from "@/lib/store"
 
 export default function ResultsPage() {
+  const results = useAnalysisStore((state) => state.results)
+
+  if (!results) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">No analysis results available</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto py-8">
       <Card>
@@ -24,28 +30,28 @@ export default function ResultsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               title="Likes"
-              value={mockPostData.metrics.likes}
+              value={results.metrics.likes.toLocaleString()}
               icon={Heart}
             />
             <MetricCard
               title="Replies"
-              value={mockPostData.metrics.replies}
+              value={results.metrics.replies.toLocaleString()}
               icon={MessageCircle}
             />
             <MetricCard
               title="Retweets"
-              value={mockPostData.metrics.retweets}
+              value={results.metrics.retweets.toLocaleString()}
               icon={Repeat2}
             />
             <MetricCard
               title="Impressions"
-              value={mockPostData.metrics.impressions}
+              value={results.metrics.impressions.toLocaleString()}
               icon={BarChart2}
             />
           </div>
 
           <div className="mt-4 text-sm text-muted-foreground">
-            <p>Post URL: <a href={mockPostData.url} target="_blank" rel="noopener noreferrer" className="underline">{mockPostData.url}</a></p>
+            <p>Post URL: <a href={results.url} target="_blank" rel="noopener noreferrer" className="underline">{results.url}</a></p>
           </div>
         </CardContent>
       </Card>
