@@ -1,11 +1,5 @@
-import dynamic from 'next/dynamic'
+import { SearchMetricsForm } from "@/components/search-metrics-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-// Dynamically import the form to avoid server-side rendering issues
-const SearchMetricsForm = dynamic(
-  () => import('@/components/search-metrics-form').then(mod => mod.SearchMetricsForm),
-  { ssr: false }
-)
 
 export default function Home() {
   return (
@@ -24,3 +18,6 @@ export default function Home() {
     </div>
   )
 }
+
+// Add this to make the page client-side rendered
+export const dynamic = 'force-dynamic'
