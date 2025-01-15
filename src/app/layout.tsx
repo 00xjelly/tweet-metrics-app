@@ -1,10 +1,11 @@
-import { Inter } from 'next/font/google'
-import "@/styles/globals.css"
-import { SiteHeader } from '@/components/site-header'
-import { ThemeProvider } from '@/components/theme-provider'
-import { AnalysisProvider } from '@/context/analysis-context'
+import { Metadata } from "next"
+import { ThemeProvider } from "@/components/theme-provider"
+import { MetricsProvider } from "@/context/metrics-context"
 
-const inter = Inter({ subsets: ['latin'] })
+export const metadata: Metadata = {
+  title: "Tweet Metrics App",
+  description: "Analyze metrics for tweets and profiles",
+}
 
 export default function RootLayout({
   children,
@@ -13,14 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <head />
+      <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AnalysisProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <SiteHeader />
-              <div className="flex-1">{children}</div>
-            </div>
-          </AnalysisProvider>
+          <MetricsProvider>
+            {children}
+          </MetricsProvider>
         </ThemeProvider>
       </body>
     </html>
