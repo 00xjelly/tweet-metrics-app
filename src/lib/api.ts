@@ -80,21 +80,34 @@ export async function analyzeMetrics(params: AnalyzeMetricsParams): Promise<ApiR
     const results = await response.json();
     console.log('API response data:', results);
     
-    // Transform Apify response to our format
+    // Transform Apify response based on search type
     const transformedData = {
       success: true,
       data: {
-        posts: results.map((result: any) => ({
-          url: result.url || params.type === 'post' ? params.urls[0] : `https://twitter.com/${params.username}/status/${result.id}`,
-          metrics: {
-            likes: result.public_metrics?.like_count || 0,
-            replies: result.public_metrics?.reply_count || 0,
-            retweets: result.public_metrics?.retweet_count || 0,
-            impressions: result.public_metrics?.impression_count || 0,
-            bookmarks: result.public_metrics?.bookmark_count || 0,
-            type: params.type
+        posts: results.map((result: any) => {
+          let url: string;
+          if (params.type === 'post' && params.urls?.length) {
+            url = params.urls[0];
+          } else if (params.type === 'profile' && result.id) {
+            url = `https://twitter.com/${params.username}/status/${result.id}`;
+          } else {
+            url = result.url || ''; // Fallback
           }
-        }))
+
+          return {
+            url,
+            author: result.author || params.username,
+            text: result.text,
+            metrics: {
+              likes: result.public_metrics?.like_count || 0,
+              replies: result.public_metrics?.reply_count || 0,
+              retweets: result.public_metrics?.retweet_count || 0,
+              impressions: result.public_metrics?.impression_count || 0,
+              bookmarks: result.public_metrics?.bookmark_count || 0,
+              type: params.type
+            }
+          };
+        })
       }
     };
 
