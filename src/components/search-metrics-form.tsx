@@ -12,12 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
-import { DateRangePicker } from "./date-range-picker"
-import { BatchSaveDialog } from "./batch-save-dialog"
-import { BatchLoadDialog } from "./batch-load-dialog"
 import { MultiLineInput } from "./multi-line-input"
-import { useSavedBatches } from "../lib/hooks/use-saved-batches"
 import { analyzeMetrics } from "../lib/api"
 import { useAnalysis } from "../context/analysis-context"
 
@@ -30,7 +25,7 @@ export function SearchMetricsForm() {
   const { setResults } = useAnalysis()
   const [activeTab] = useState<"profile" | "post" | "metrics">("post")
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const postForm = useForm<z.infer<typeof postSearchSchema>>({
     resolver: zodResolver(postSearchSchema),
     defaultValues: {
@@ -66,35 +61,35 @@ export function SearchMetricsForm() {
   }
 
   return (
-      <Form {...postForm}>
-        <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
-          <FormField
-            control={postForm.control}
-            name="urls"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Post URLs</FormLabel>
-                <FormControl>
-                  <MultiLineInput 
-                    {...field} 
-                    description="Enter post URLs separated by new lines. Example: https://twitter.com/username/status/123456789"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              'Analyze Posts'
-            )}
-          </Button>
-        </form>
-      </Form>
+    <Form {...postForm}>
+      <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
+        <FormField
+          control={postForm.control}
+          name="urls"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Post URL</FormLabel>
+              <FormControl>
+                <MultiLineInput 
+                  {...field} 
+                  description="Enter post URL. Example: https://twitter.com/username/status/123456789"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={isLoading} className="w-full">
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            'Analyze Post'
+          )}
+        </Button>
+      </form>
+    </Form>
   )
 }
