@@ -8,6 +8,7 @@ interface ThemeProviderProps {
   attribute?: string
   defaultTheme?: string
   enableSystem?: boolean
+  themes?: string[]
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
