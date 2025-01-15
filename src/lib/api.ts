@@ -5,7 +5,7 @@ interface ApiResponse {
 }
 
 const APIFY_API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN;
-const ACTOR_ID = 'apify/tweet-scraper';
+const ACTOR_ID = 'kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest';
 
 export async function analyzeMetrics(data: any): Promise<ApiResponse> {
   console.log('Analyzing metrics with data:', data);
@@ -19,12 +19,24 @@ export async function analyzeMetrics(data: any): Promise<ApiResponse> {
       throw new Error('API token is missing');
     }
 
+    // Extract tweet IDs from URLs
+    const tweetIds = urls.map(url => {
+      const matches = url.match(/status\/([0-9]+)/);
+      return matches ? matches[1] : null;
+    }).filter(Boolean);
+
+    if (tweetIds.length === 0) {
+      throw new Error('No valid tweet IDs found in URLs');
+    }
+
     // Call Apify API
-    const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync`;
+    const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items`;
     console.log('Making API request to:', apiUrl);
 
     const requestBody = {
-      tweet_urls: urls,
+      tweetIDs: tweetIds,
+      maxItems: tweetIds.length,
+      queryType: "Latest"
     };
     console.log('Request body:', requestBody);
 
@@ -45,21 +57,21 @@ export async function analyzeMetrics(data: any): Promise<ApiResponse> {
       throw new Error('Failed to fetch tweet metrics');
     }
 
-    const result = await response.json();
-    console.log('API response data:', result);
+    const results = await response.json();
+    console.log('API response data:', results);
     
     // Transform Apify response to our format
     const transformedData = {
       success: true,
       data: {
-        posts: urls.map((url: string) => ({
-          url,
+        posts: results.map((result: any) => ({
+          url: urls[0], // Map back to original URL
           metrics: {
-            likes: result.data?.likeCount || 0,
-            replies: result.data?.replyCount || 0,
-            retweets: result.data?.retweetCount || 0,
-            impressions: result.data?.viewCount || 0,
-            bookmarks: result.data?.bookmarkCount || 0,
+            likes: result.public_metrics?.like_count || 0,
+            replies: result.public_metrics?.reply_count || 0,
+            retweets: result.public_metrics?.retweet_count || 0,
+            impressions: result.public_metrics?.impression_count || 0,
+            bookmarks: 0 // Not provided in this API
           }
         }))
       }
