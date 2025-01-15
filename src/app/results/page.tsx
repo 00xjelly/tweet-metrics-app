@@ -1,9 +1,14 @@
+"use client"
+
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { MetricCard } from '@/components/metric-card'
+import { useMetrics } from '@/context/metrics-context'
 
 export default function ResultsPage() {
+  const { results } = useMetrics()
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-6 flex justify-between items-center">
@@ -15,7 +20,21 @@ export default function ResultsPage() {
 
       <Suspense fallback={<div>Loading results...</div>}>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Results will be populated here */}
+          {results?.map((post, index) => (
+            <MetricCard
+              key={index}
+              url={post.url}
+              author={post.author}
+              text={post.text}
+              metrics={{
+                likes: post.metrics.likes,
+                replies: post.metrics.replies,
+                retweets: post.metrics.retweets,
+                impressions: post.metrics.impressions,
+                bookmarks: post.metrics.bookmarks
+              }}
+            />
+          ))}
         </div>
       </Suspense>
     </div>
