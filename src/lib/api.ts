@@ -39,17 +39,33 @@ export type MetricsErrorResponse = {
 export type MetricsResponse = MetricsSuccessResponse | MetricsErrorResponse
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
+const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
 
 export async function analyzeMetrics(params: MetricsParams): Promise<MetricsResponse> {
   const { type, username, maxItems = 100, urls, since, until, filterReplies, filterQuotes } = params
   
   // Extract username from URL if full URL is provided
   const cleanUsername = username?.includes('x.com/') || username?.includes('twitter.com/') 
-    ? username.split('/').pop() 
-    : username
+    ? username.split('/').pop()?.replace(/@/g, '') 
+    : username?.replace(/@/g, '')
+
+  if (!cleanUsername && type === 'profile') {
+    return {
+      success: false,
+      error: 'Invalid username provided'
+    }
+  }
+
+  if (!API_TOKEN) {
+    return {
+      success: false,
+      error: 'API token not configured'
+    }
+  }
 
   const requestBody = {
-    twitterContent: "",
+    token: API_TOKEN,
+    username: cleanUsername,
     maxItems,
     queryType: "Latest",
     lang: "en",
@@ -86,30 +102,44 @@ export async function analyzeMetrics(params: MetricsParams): Promise<MetricsResp
   }
 
   try {
+    console.log('Making API request with params:', {
+      ...requestBody,
+      token: '***' // Hide token in logs
+    })
+
     const response = await fetch(BASE_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_TOKEN}`
       },
       body: JSON.stringify(requestBody),
     })
 
+    const responseData = await response.json()
+
     if (!response.ok) {
       return {
         success: false,
-        error: `API request failed with status ${response.status}`
+        error: responseData.error || `API request failed with status ${response.status}`
       }
     }
 
-    const data = await response.json()
+    if (!Array.isArray(responseData)) {
+      return {
+        success: false,
+        error: 'Invalid response format from API'
+      }
+    }
 
     return {
       success: true,
       data: {
-        posts: data
+        posts: responseData
       }
     }
   } catch (error) {
+    console.error('API request error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to analyze metrics'
