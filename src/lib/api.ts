@@ -18,24 +18,41 @@ export type MetricsParams = {
   username?: string
   maxItems?: number
   urls?: string[]
+  since?: string
+  until?: string
 }
 
-const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
+const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/runs'
+const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
 
 export async function analyzeMetrics(params: MetricsParams) {
-  console.log('Analyzing metrics with params:', params)
+  const { type, username, maxItems = 100, since, until } = params
   
-  const requestBody = {
-    from: params.username,
-    maxItems: params.maxItems || 100,
-    queryType: "Latest",
+  if (!API_TOKEN) {
+    console.error('API token not configured')
+    return {
+      success: false,
+      error: 'API token not configured'
+    }
   }
 
-  console.log('Making API request to:', BASE_API_URL)
-  console.log('Request body:', requestBody)
+  // Construct the search query
+  const searchQuery = `from:${username} ${since ? `since:${since}` : ''} ${until ? `until:${until}` : ''}`
+  
+  const requestBody = {
+    searchTerms: [searchQuery],
+  }
+
+  const url = `${BASE_API_URL}?token=${API_TOKEN}`
 
   try {
-    const response = await fetch(BASE_API_URL, {
+    console.log('Making API request to:', url)
+    console.log('Request body:', {
+      ...requestBody,
+      token: '***' // Hide token in logs
+    })
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,24 +60,29 @@ export async function analyzeMetrics(params: MetricsParams) {
       body: JSON.stringify(requestBody),
     })
 
-    console.log('API response status:', response.status)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API request failed:', response.status, errorText)
+      return {
+        success: false,
+        error: `API request failed: ${errorText}`
+      }
+    }
+
     const data = await response.json()
     console.log('API response data:', data)
 
-    const transformedData = {
+    return {
       success: true,
       data: {
         posts: data
       }
     }
-
-    console.log('Transformed data:', transformedData)
-    return transformedData
   } catch (error) {
-    console.error('Error analyzing metrics:', error)
+    console.error('An error occurred:', error)
     return {
       success: false,
-      error: 'Failed to analyze metrics'
+      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
     }
   }
 }
