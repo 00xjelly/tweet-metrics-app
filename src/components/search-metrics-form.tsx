@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
 import Papa from 'papaparse'
@@ -32,6 +32,7 @@ export function SearchMetricsForm() {
   const [activeTab, setActiveTab] = useState<"profile" | "post" | "metrics">("post")
   const [isLoading, setIsLoading] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const postForm = useForm<z.infer<typeof postSearchSchema>>({
     resolver: zodResolver(postSearchSchema),
@@ -193,12 +194,13 @@ export function SearchMetricsForm() {
                           accept=".csv"
                           onChange={handleFileUpload}
                           className="max-w-xs"
+                          ref={fileInputRef}
                         />
                         <Button
                           type="button"
                           variant="outline"
                           size="icon"
-                          onClick={() => document.querySelector('input[type="file"]')?.click()}
+                          onClick={() => fileInputRef.current?.click()}
                         >
                           <Upload className="h-4 w-4" />
                         </Button>
