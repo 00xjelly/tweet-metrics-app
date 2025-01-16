@@ -3,33 +3,47 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
+import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
+import Papa from 'papaparse'
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { analyzeMetrics } from "../lib/api"
 
 const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
 })
 
-const profileSearchSchema = z.object({
-  username: z.string().min(1, "Please enter a username").transform(username => 
-    username.startsWith('@') ? username.slice(1) : username
-  ),
-  maxItems: z.number().min(1).max(200).default(100)
-})
+const profileSearchSchema = z.discriminatedUnion("inputType", [
+  z.object({
+    inputType: z.literal("text"),
+    profiles: z.string().min(1, "Please enter at least one username").transform(input => 
+      input.split(/[\n,]/)
+        .map(username => username.trim())
+        .filter(Boolean)
+        .map(username => username.startsWith('@') ? username.slice(1) : username)
+    ),
+    maxItems: z.number().min(1).max(200).optional()
+  }),
+  z.object({
+    inputType: z.literal("file"),
+    profiles: z.array(z.string()).min(1, "Please upload a valid CSV file"),
+    maxItems: z.number().min(1).max(200).optional()
+  })
+])
 
 export function SearchMetricsForm() {
   const router = useRouter()
   const { setResults } = useMetrics()
   const [activeTab, setActiveTab] = useState<"profile" | "post" | "metrics">("post")
   const [isLoading, setIsLoading] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
 
   const postForm = useForm<z.infer<typeof postSearchSchema>>({
     resolver: zodResolver(postSearchSchema),
@@ -41,10 +55,56 @@ export function SearchMetricsForm() {
   const profileForm = useForm<z.infer<typeof profileSearchSchema>>({
     resolver: zodResolver(profileSearchSchema),
     defaultValues: {
-      username: "",
+      inputType: "text",
+      profiles: "",
       maxItems: 100
     },
   })
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setFileError(null)
+    
+    if (file.type !== "text/csv") {
+      setFileError("Please upload a CSV file")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const csvData = Papa.parse(e.target?.result as string, {
+          header: true,
+          skipEmptyLines: true
+        })
+
+        if (csvData.errors.length > 0) {
+          setFileError("Invalid CSV format")
+          return
+        }
+
+        // Assuming the CSV has a column named 'username' or 'profile'
+        const profiles = csvData.data
+          .map((row: any) => row.username || row.profile)
+          .filter(Boolean)
+          .map(username => username.startsWith('@') ? username.slice(1) : username)
+
+        if (profiles.length === 0) {
+          setFileError("No valid profiles found in CSV")
+          return
+        }
+
+        profileForm.setValue('inputType', 'file')
+        profileForm.setValue('profiles', profiles)
+      } catch (error) {
+        setFileError("Error processing CSV file")
+      }
+    }
+
+    reader.readAsText(file)
+  }
 
   async function onPostSubmit(values: z.infer<typeof postSearchSchema>) {
     console.log('Form submitted with values:', values);
@@ -80,9 +140,16 @@ export function SearchMetricsForm() {
     
     setIsLoading(true)
     try {
+      // Handle both text and file inputs
+      const profiles = Array.isArray(values.profiles) 
+        ? values.profiles 
+        : values.profiles.split(/[\n,]/)
+          .map(p => p.trim())
+          .filter(Boolean)
+
       const response = await analyzeMetrics({
         type: 'profile',
-        username: values.username,
+        username: profiles[0], // Currently handling first profile only - we'll update this
         maxItems: values.maxItems
       })
       
@@ -121,15 +188,37 @@ export function SearchMetricsForm() {
           <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
             <FormField
               control={profileForm.control}
-              name="username"
+              name="profiles"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Twitter Username</FormLabel>
+                  <FormLabel>Twitter Usernames</FormLabel>
                   <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="@username"
-                    />
+                    <div className="space-y-2">
+                      <Textarea 
+                        {...field} 
+                        placeholder="Enter usernames (one per line or comma-separated)&#10;e.g. @username1, @username2&#10;or&#10;@username1&#10;@username2"
+                        className="min-h-[100px]"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileUpload}
+                          className="max-w-xs"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => document.querySelector('input[type="file"]')?.click()}
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {fileError && (
+                        <p className="text-sm text-red-500">{fileError}</p>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
