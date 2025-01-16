@@ -1,110 +1,92 @@
-interface ApiResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
+export type MetricsParams = {
+  type: 'profile' | 'post'
+  username?: string
+  maxItems?: number
+  urls?: string[]
+  since?: string
+  until?: string
+  filterReplies?: boolean
+  filterQuotes?: boolean
 }
 
-interface AnalyzeMetricsParams {
-  type: 'post' | 'profile' | 'metrics';
-  urls?: string[];
-  username?: string;
-  maxItems?: number;
-}
+const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
-const APIFY_API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN;
-const ACTOR_ID = 'kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest';
-
-export async function analyzeMetrics(params: AnalyzeMetricsParams): Promise<ApiResponse> {
-  console.log('Analyzing metrics with params:', params);
+export async function analyzeMetrics(params: MetricsParams) {
+  const { type, username, maxItems = 100, urls, since, until, filterReplies, filterQuotes } = params
   
+  // Extract username from URL if full URL is provided
+  const cleanUsername = username?.includes('x.com/') || username?.includes('twitter.com/') 
+    ? username.split('/').pop() 
+    : username
+
+  const requestBody = {
+    twitterContent: "",
+    maxItems,
+    queryType: "Latest",
+    lang: "en",
+    from: cleanUsername,
+    "filter:verified": false,
+    "filter:blue_verified": false,
+    since: since || "2021-12-31_23:59:59_UTC",
+    until: until || "2024-12-31_23:59:59_UTC",
+    "filter:nativeretweets": false,
+    "include:nativeretweets": false,
+    "filter:replies": filterReplies || false,
+    "filter:quote": filterQuotes || false,
+    "filter:has_engagement": false,
+    "min_retweets": 0,
+    "min_faves": 0,
+    "min_replies": 0,
+    "-min_retweets": 0,
+    "-min_faves": 0,
+    "-min_replies": 0,
+    "filter:media": false,
+    "filter:twimg": false,
+    "filter:images": false,
+    "filter:videos": false,
+    "filter:native_video": false,
+    "filter:vine": false,
+    "filter:consumer_video": false,
+    "filter:pro_video": false,
+    "filter:spaces": false,
+    "filter:links": false,
+    "filter:mentions": false,
+    "filter:news": false,
+    "filter:safe": false,
+    "filter:hashtags": false
+  }
+
+  console.log('Making API request to:', BASE_API_URL)
+  console.log('Request body:', requestBody)
+
   try {
-    if (!APIFY_API_TOKEN) {
-      console.error('APIFY_API_TOKEN is not defined');
-      throw new Error('API token is missing');
-    }
-
-    const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items`;
-    console.log('Making API request to:', apiUrl);
-
-    let requestBody;
-
-    if (params.type === 'post') {
-      const urls = Array.isArray(params.urls) ? params.urls : [params.urls];
-      console.log('Processing URLs:', urls);
-
-      const tweetIds = urls.map(url => {
-        const matches = url.match(/status\/([0-9]+)/);
-        return matches ? matches[1] : null;
-      }).filter(Boolean);
-
-      if (tweetIds.length === 0) {
-        throw new Error('No valid tweet IDs found in URLs');
-      }
-
-      requestBody = {
-        tweetIDs: tweetIds,
-        maxItems: tweetIds.length,
-        queryType: "Latest"
-      };
-    } else if (params.type === 'profile') {
-      requestBody = {
-        from: params.username,
-        maxItems: params.maxItems || 100,
-        queryType: "Latest"
-      };
-    } else {
-      throw new Error('Unsupported search type');
-    }
-
-    console.log('Request body:', requestBody);
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(BASE_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APIFY_API_TOKEN}`,
       },
       body: JSON.stringify(requestBody),
-    });
+    })
 
-    console.log('API response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error('Failed to fetch tweet metrics');
-    }
+    console.log('API response status:', response.status)
+    const data = await response.json()
+    console.log('API response data:', data)
 
-    const results = await response.json();
-    console.log('API response data:', results);
-
-    const transformedPosts = results.map((result: any) => ({
-      author: result.author?.userName || params.username || 'Unknown',
-      url: result.url || result.twitterUrl,
-      text: result.text,
-      metrics: {
-        likes: result.likeCount || result.public_metrics?.like_count || 0,
-        replies: result.replyCount || result.public_metrics?.reply_count || 0,
-        retweets: result.retweetCount || result.public_metrics?.retweet_count || 0,
-        impressions: result.viewCount || result.public_metrics?.impression_count || 0,
-        bookmarks: result.bookmarkCount || result.public_metrics?.bookmark_count || 0
-      }
-    }));
-    
+    // Transform the response data
     const transformedData = {
       success: true,
       data: {
-        posts: transformedPosts
+        posts: data
       }
-    };
+    }
 
-    console.log('Transformed data:', transformedData);
-    return transformedData;
+    console.log('Transformed data:', transformedData)
+    return transformedData
   } catch (error) {
-    console.error('Error analyzing metrics:', error);
+    console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze tweet metrics'
-    };
+      error: 'Failed to analyze metrics'
+    }
   }
 }
