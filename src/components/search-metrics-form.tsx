@@ -112,12 +112,13 @@ export function SearchMetricsForm() {
         urls
       })
       
-      console.log('API Response:', response);
-
-      if (response.success) {
-        setResults(response.data.posts)
-        router.push('/results')
+      if ('error' in response) {
+        setFileError(response.error)
+        return
       }
+      
+      setResults(response.data.posts)
+      router.push('/results')
     } catch (error) {
       console.error('Error analyzing posts:', error)
     } finally {
@@ -140,14 +141,16 @@ export function SearchMetricsForm() {
         maxItems: values.maxItems
       })
       
-      console.log('API Response:', response);
-
-      if (response.success) {
-        setResults(response.data.posts)
-        router.push('/results')
+      if ('error' in response) {
+        setFileError(response.error)
+        return
       }
+
+      setResults(response.data.posts)
+      router.push('/results')
     } catch (error) {
       console.error('Error analyzing profile:', error)
+      setFileError('Error processing request')
     } finally {
       setIsLoading(false)
     }
