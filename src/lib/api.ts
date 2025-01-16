@@ -1,3 +1,18 @@
+export type Tweet = {
+  id: string
+  text: string
+  url: string
+  author: string
+  isReply: boolean
+  isQuote: boolean
+  metrics: {
+    likes: number
+    replies: number
+    retweets: number
+    impressions: number
+  }
+}
+
 export type MetricsParams = {
   type: 'profile' | 'post'
   username?: string
@@ -9,9 +24,23 @@ export type MetricsParams = {
   filterQuotes?: boolean
 }
 
+export type MetricsSuccessResponse = {
+  success: true
+  data: {
+    posts: Tweet[]
+  }
+}
+
+export type MetricsErrorResponse = {
+  success: false
+  error: string
+}
+
+export type MetricsResponse = MetricsSuccessResponse | MetricsErrorResponse
+
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
-export async function analyzeMetrics(params: MetricsParams) {
+export async function analyzeMetrics(params: MetricsParams): Promise<MetricsResponse> {
   const { type, username, maxItems = 100, urls, since, until, filterReplies, filterQuotes } = params
   
   // Extract username from URL if full URL is provided
@@ -56,9 +85,6 @@ export async function analyzeMetrics(params: MetricsParams) {
     "filter:hashtags": false
   }
 
-  console.log('Making API request to:', BASE_API_URL)
-  console.log('Request body:', requestBody)
-
   try {
     const response = await fetch(BASE_API_URL, {
       method: 'POST',
@@ -68,25 +94,25 @@ export async function analyzeMetrics(params: MetricsParams) {
       body: JSON.stringify(requestBody),
     })
 
-    console.log('API response status:', response.status)
-    const data = await response.json()
-    console.log('API response data:', data)
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `API request failed with status ${response.status}`
+      }
+    }
 
-    // Transform the response data
-    const transformedData = {
+    const data = await response.json()
+
+    return {
       success: true,
       data: {
         posts: data
       }
     }
-
-    console.log('Transformed data:', transformedData)
-    return transformedData
   } catch (error) {
-    console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: 'Failed to analyze metrics'
+      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
     }
   }
 }
