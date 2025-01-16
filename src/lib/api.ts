@@ -23,16 +23,21 @@ export type MetricsParams = {
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/runs'
-const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
 
 export async function analyzeMetrics(params: MetricsParams) {
   const { type, username, maxItems = 100, since, until } = params
   
+  // Debug: Check if we can access the token
+  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
+  console.log('API Token exists:', !!API_TOKEN)
+  console.log('Token prefix:', API_TOKEN?.substring(0, 4) + '...')
+  console.log('Environment variables:', process.env)
+
   if (!API_TOKEN) {
     console.error('API token not configured')
     return {
       success: false,
-      error: 'API token not configured'
+      error: 'API token not configured. Check environment variables.'
     }
   }
 
@@ -46,11 +51,8 @@ export async function analyzeMetrics(params: MetricsParams) {
   const url = `${BASE_API_URL}?token=${API_TOKEN}`
 
   try {
-    console.log('Making API request to:', url)
-    console.log('Request body:', {
-      ...requestBody,
-      token: '***' // Hide token in logs
-    })
+    console.log('Making API request to:', url.replace(API_TOKEN, '***'))
+    console.log('Request body:', requestBody)
 
     const response = await fetch(url, {
       method: 'POST',
