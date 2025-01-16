@@ -1,16 +1,17 @@
 "use client"
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, ReactNode } from "react"
+import type { Tweet } from "@/lib/api"
 
-interface MetricsState {
-  results: any[] | null
-  setResults: (results: any[] | null) => void
+type MetricsContextType = {
+  results: Tweet[]
+  setResults: (results: Tweet[]) => void
 }
 
-const MetricsContext = createContext<MetricsState | undefined>(undefined)
+const MetricsContext = createContext<MetricsContextType | undefined>(undefined)
 
 export function MetricsProvider({ children }: { children: ReactNode }) {
-  const [results, setResults] = useState<any[] | null>(null)
+  const [results, setResults] = useState<Tweet[]>([])
 
   return (
     <MetricsContext.Provider value={{ results, setResults }}>
