@@ -1,148 +1,51 @@
-export type Tweet = {
-  id: string
-  text: string
-  url: string
-  author: string
-  isReply: boolean
-  isQuote: boolean
-  metrics: {
-    likes: number
-    replies: number
-    retweets: number
-    impressions: number
-  }
-}
-
 export type MetricsParams = {
   type: 'profile' | 'post'
   username?: string
   maxItems?: number
   urls?: string[]
-  since?: string
-  until?: string
-  filterReplies?: boolean
-  filterQuotes?: boolean
 }
-
-export type MetricsSuccessResponse = {
-  success: true
-  data: {
-    posts: Tweet[]
-  }
-}
-
-export type MetricsErrorResponse = {
-  success: false
-  error: string
-}
-
-export type MetricsResponse = MetricsSuccessResponse | MetricsErrorResponse
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
-const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
 
-export async function analyzeMetrics(params: MetricsParams): Promise<MetricsResponse> {
-  const { type, username, maxItems = 100, urls, since, until, filterReplies, filterQuotes } = params
+export async function analyzeMetrics(params: MetricsParams) {
+  console.log('Analyzing metrics with params:', params)
   
-  // Extract username from URL if full URL is provided
-  const cleanUsername = username?.includes('x.com/') || username?.includes('twitter.com/') 
-    ? username.split('/').pop()?.replace(/@/g, '') 
-    : username?.replace(/@/g, '')
-
-  if (!cleanUsername && type === 'profile') {
-    return {
-      success: false,
-      error: 'Invalid username provided'
-    }
-  }
-
-  if (!API_TOKEN) {
-    return {
-      success: false,
-      error: 'API token not configured'
-    }
-  }
-
   const requestBody = {
-    token: API_TOKEN,
-    username: cleanUsername,
-    maxItems,
+    from: params.username,
+    maxItems: params.maxItems || 100,
     queryType: "Latest",
-    lang: "en",
-    from: cleanUsername,
-    "filter:verified": false,
-    "filter:blue_verified": false,
-    since: since || "2021-12-31_23:59:59_UTC",
-    until: until || "2024-12-31_23:59:59_UTC",
-    "filter:nativeretweets": false,
-    "include:nativeretweets": false,
-    "filter:replies": filterReplies || false,
-    "filter:quote": filterQuotes || false,
-    "filter:has_engagement": false,
-    "min_retweets": 0,
-    "min_faves": 0,
-    "min_replies": 0,
-    "-min_retweets": 0,
-    "-min_faves": 0,
-    "-min_replies": 0,
-    "filter:media": false,
-    "filter:twimg": false,
-    "filter:images": false,
-    "filter:videos": false,
-    "filter:native_video": false,
-    "filter:vine": false,
-    "filter:consumer_video": false,
-    "filter:pro_video": false,
-    "filter:spaces": false,
-    "filter:links": false,
-    "filter:mentions": false,
-    "filter:news": false,
-    "filter:safe": false,
-    "filter:hashtags": false
   }
+
+  console.log('Making API request to:', BASE_API_URL)
+  console.log('Request body:', requestBody)
 
   try {
-    console.log('Making API request with params:', {
-      ...requestBody,
-      token: '***' // Hide token in logs
-    })
-
     const response = await fetch(BASE_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_TOKEN}`
       },
       body: JSON.stringify(requestBody),
     })
 
-    const responseData = await response.json()
+    console.log('API response status:', response.status)
+    const data = await response.json()
+    console.log('API response data:', data)
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: responseData.error || `API request failed with status ${response.status}`
-      }
-    }
-
-    if (!Array.isArray(responseData)) {
-      return {
-        success: false,
-        error: 'Invalid response format from API'
-      }
-    }
-
-    return {
+    const transformedData = {
       success: true,
       data: {
-        posts: responseData
+        posts: data
       }
     }
+
+    console.log('Transformed data:', transformedData)
+    return transformedData
   } catch (error) {
-    console.error('API request error:', error)
+    console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
+      error: 'Failed to analyze metrics'
     }
   }
 }
