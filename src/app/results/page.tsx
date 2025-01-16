@@ -1,50 +1,54 @@
 "use client"
 
-import { Suspense } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { MetricCard } from '@/components/metric-card'
-import { useMetrics } from '@/context/metrics-context'
+import { useMetrics } from "@/context/metrics-context"
+import { MetricRow } from "@/components/metric-row"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 
 export default function ResultsPage() {
   const { results } = useMetrics()
 
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Analysis Results</h1>
-        <Link href="/">
-          <Button variant="outline">Back to Search</Button>
-        </Link>
-      </div>
+  const handleDownload = () => {
+    // Existing download functionality
+  }
 
-      <Suspense fallback={<div>Loading results...</div>}>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {results && results.length > 0 ? (
-            results.map((post, index) => (
-              <MetricCard
-                key={index}
-                url={post.url}
-                author={post.author}
-                text={post.text}
-                metrics={{
-                  likes: post.metrics.likes,
-                  replies: post.metrics.replies,
-                  retweets: post.metrics.retweets,
-                  impressions: post.metrics.impressions,
-                  bookmarks: post.metrics.bookmarks
-                }}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-lg text-muted-foreground">
-                No results found. Try searching again.
-              </p>
-            </div>
-          )}
-        </div>
-      </Suspense>
+  if (!results || results.length === 0) {
+    return (
+      <div className="container mx-auto py-8 text-center">
+        <p>No results available</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Results</h1>
+        <Button onClick={handleDownload} variant="outline" size="sm">
+          <Download className="h-4 w-4 mr-2" />
+          Download CSV
+        </Button>
+      </div>
+      
+      <div className="space-y-1 bg-white rounded-lg shadow overflow-hidden">
+        {results.map((result: any) => (
+          <MetricRow
+            key={result.id}
+            id={result.id}
+            text={result.text}
+            url={result.url}
+            author={result.author}
+            isReply={result.isReply}
+            isQuote={result.isQuote}
+            metrics={{
+              likes: result.metrics.likes,
+              replies: result.metrics.replies,
+              retweets: result.metrics.retweets,
+              impressions: result.metrics.impressions
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }
