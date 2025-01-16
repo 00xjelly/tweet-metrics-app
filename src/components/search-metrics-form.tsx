@@ -3,17 +3,21 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
+import { Search, LinkIcon, User, Loader2, Upload, Calendar } from 'lucide-react'
 import { useState, useRef } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
 import Papa from 'papaparse'
+import { format } from 'date-fns'
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { analyzeMetrics } from "@/lib/api"
 
 const postSearchSchema = z.object({
@@ -23,7 +27,12 @@ const postSearchSchema = z.object({
 const profileSearchSchema = z.object({
   inputType: z.enum(["text", "file"]),
   profiles: z.string().min(1, "Please enter at least one username"),
-  maxItems: z.number().min(1).max(200).optional()
+  maxItems: z.number().min(1).max(200).optional(),
+  includeReplies: z.boolean().default(false),
+  dateRange: z.object({
+    from: z.date().optional(),
+    to: z.date().optional()
+  }).optional()
 })
 
 export function SearchMetricsForm() {
@@ -46,7 +55,12 @@ export function SearchMetricsForm() {
     defaultValues: {
       inputType: "text",
       profiles: "",
-      maxItems: 100
+      maxItems: 100,
+      includeReplies: false,
+      dateRange: {
+        from: undefined,
+        to: undefined
+      }
     },
   })
 
@@ -74,7 +88,6 @@ export function SearchMetricsForm() {
           return
         }
 
-        // Assuming the CSV has a column named 'username' or 'profile'
         const profiles = csvData.data
           .map((row: any) => row.username || row.profile)
           .filter(Boolean)
@@ -135,10 +148,21 @@ export function SearchMetricsForm() {
         values.profiles.split('/').pop() : 
         values.profiles
 
+      const since = values.dateRange?.from ? 
+        format(values.dateRange.from, "yyyy-MM-dd_HH:mm:ss_'UTC'") : 
+        undefined
+
+      const until = values.dateRange?.to ? 
+        format(values.dateRange.to, "yyyy-MM-dd_HH:mm:ss_'UTC'") : 
+        undefined
+
       const response = await analyzeMetrics({
         type: 'profile',
         username,
-        maxItems: values.maxItems
+        maxItems: values.maxItems,
+        since,
+        until,
+        filterReplies: !values.includeReplies
       })
       
       if ('error' in response) {
@@ -215,6 +239,74 @@ export function SearchMetricsForm() {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={profileForm.control}
+              name="dateRange"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date Range</FormLabel>
+                  <FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {field.value?.from ? (
+                            field.value.to ? (
+                              <>
+                                {format(field.value.from, "PP")} - {format(field.value.to, "PP")}
+                              </>
+                            ) : (
+                              format(field.value.from, "PP")
+                            )
+                          ) : (
+                            <span>Pick a date range</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          initialFocus
+                          mode="range"
+                          defaultMonth={field.value?.from}
+                          selected={{
+                            from: field.value?.from,
+                            to: field.value?.to,
+                          }}
+                          onSelect={field.onChange}
+                          numberOfMonths={2}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="includeReplies"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Include Replies
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={profileForm.control}
               name="maxItems"
@@ -234,6 +326,7 @@ export function SearchMetricsForm() {
                 </FormItem>
               )}
             />
+
             <Button 
               type="submit" 
               disabled={isLoading} 
