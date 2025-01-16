@@ -1,3 +1,18 @@
+export type Tweet = {
+  id: string
+  text: string
+  url: string
+  author: string
+  isReply: boolean
+  isQuote: boolean
+  metrics: {
+    likes: number
+    replies: number
+    retweets: number
+    impressions: number
+  }
+}
+
 export type MetricsParams = {
   type: 'profile' | 'post'
   username?: string
