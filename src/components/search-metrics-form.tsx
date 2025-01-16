@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { analyzeMetrics } from "../lib/api"
+import { analyzeMetrics } from "@/lib/api"
+import type { MetricsResponse } from "@/lib/api"
 
 const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
@@ -112,8 +113,6 @@ export function SearchMetricsForm() {
         urls
       })
       
-      console.log('API Response:', response);
-
       if (response.success) {
         setResults(response.data.posts)
         router.push('/results')
@@ -138,15 +137,15 @@ export function SearchMetricsForm() {
 
       const response = await analyzeMetrics({
         type: 'profile',
-        username: profiles[0], // Currently handling first profile only - we'll update this
+        username: profiles[0], // Currently handling first profile only
         maxItems: values.maxItems
       })
       
-      console.log('API Response:', response);
-
       if (response.success) {
         setResults(response.data.posts)
         router.push('/results')
+      } else {
+        setFileError(response.error)
       }
     } catch (error) {
       console.error('Error analyzing profile:', error)
