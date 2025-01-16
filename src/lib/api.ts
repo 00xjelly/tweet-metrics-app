@@ -22,7 +22,7 @@ export type MetricsParams = {
   until?: string
 }
 
-const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest'
+const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
 export async function analyzeMetrics(params: MetricsParams) {
   const { type, username, maxItems = 100, since, until } = params
@@ -37,21 +37,27 @@ export async function analyzeMetrics(params: MetricsParams) {
     }
   }
 
+  // Clean up username if it's a URL
+  const cleanUsername = username?.includes('/') ? 
+    username.split('/').pop() : 
+    username
+
   // Construct the search query
-  const searchQuery = `from:${username} ${since ? `since:${since}` : ''} ${until ? `until:${until}` : ''}`
+  const searchQuery = `from:${cleanUsername} ${since ? `since:${since}` : ''} ${until ? `until:${until}` : ''}`
   
   const requestBody = {
     searchTerms: [searchQuery],
   }
 
-  const runUrl = `${BASE_API_URL}/runs?token=${API_TOKEN}`
+  const url = `${BASE_API_URL}?token=${API_TOKEN}`
 
   try {
-    console.log('Starting API run...')
-    console.log('Request body:', requestBody)
+    console.log('Making API request with params:', {
+      url: url.replace(API_TOKEN, '***'),
+      body: requestBody
+    })
 
-    // Start the run
-    const runResponse = await fetch(runUrl, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -59,53 +65,24 @@ export async function analyzeMetrics(params: MetricsParams) {
       body: JSON.stringify(requestBody),
     })
 
-    if (!runResponse.ok) {
-      const errorText = await runResponse.text()
-      console.error('API run failed:', runResponse.status, errorText)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API request failed:', response.status, errorText)
       return {
         success: false,
-        error: `API run failed: ${errorText}`
+        error: `API request failed: ${errorText}`
       }
     }
 
-    const runData = await runResponse.json()
-    console.log('Run started:', runData)
-
-    // Get the dataset ID
-    const runId = runData.data.id
-    const datasetUrl = `${BASE_API_URL}/runs/${runId}/dataset/items?token=${API_TOKEN}`
-
-    // Poll for results
-    let attempts = 0
-    const maxAttempts = 10
-    const delay = 2000 // 2 seconds
-
-    while (attempts < maxAttempts) {
-      console.log(`Checking for results... (Attempt ${attempts + 1}/${maxAttempts})`)
-      
-      const dataResponse = await fetch(datasetUrl)
-      
-      if (dataResponse.ok) {
-        const tweets = await dataResponse.json()
-        console.log('Retrieved tweets:', tweets)
-
-        return {
-          success: true,
-          data: {
-            posts: tweets
-          }
-        }
-      }
-
-      attempts++
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
+    const data = await response.json()
+    console.log('API response data:', data)
 
     return {
-      success: false,
-      error: 'Timed out waiting for results'
+      success: true,
+      data: {
+        posts: data
+      }
     }
-
   } catch (error) {
     console.error('An error occurred:', error)
     return {
