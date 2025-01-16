@@ -20,23 +20,11 @@ const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
 })
 
-const profileSearchSchema = z.discriminatedUnion("inputType", [
-  z.object({
-    inputType: z.literal("text"),
-    profiles: z.string().min(1, "Please enter at least one username").transform(input => 
-      input.split(/[\n,]/)
-        .map(username => username.trim())
-        .filter(Boolean)
-        .map(username => username.startsWith('@') ? username.slice(1) : username)
-    ),
-    maxItems: z.number().min(1).max(200).optional()
-  }),
-  z.object({
-    inputType: z.literal("file"),
-    profiles: z.array(z.string()).min(1, "Please upload a valid CSV file"),
-    maxItems: z.number().min(1).max(200).optional()
-  })
-])
+const profileSearchSchema = z.object({
+  inputType: z.enum(["text", "file"]),
+  profiles: z.string().min(1, "Please enter at least one username"),
+  maxItems: z.number().min(1).max(200).optional()
+})
 
 export function SearchMetricsForm() {
   const router = useRouter()
@@ -90,13 +78,14 @@ export function SearchMetricsForm() {
           .map((row: any) => row.username || row.profile)
           .filter(Boolean)
           .map(username => username.startsWith('@') ? username.slice(1) : username)
+          .join('\n')
 
-        if (profiles.length === 0) {
+        if (!profiles) {
           setFileError("No valid profiles found in CSV")
           return
         }
 
-        profileForm.setValue('inputType', 'file')
+        profileForm.setValue('inputType', 'text')
         profileForm.setValue('profiles', profiles)
       } catch (error) {
         setFileError("Error processing CSV file")
@@ -140,12 +129,11 @@ export function SearchMetricsForm() {
     
     setIsLoading(true)
     try {
-      // Handle both text and file inputs
-      const profiles = Array.isArray(values.profiles) 
-        ? values.profiles 
-        : values.profiles.split(/[\n,]/)
-          .map(p => p.trim())
-          .filter(Boolean)
+      const profiles = values.profiles
+        .split(/[\n,]/)
+        .map(username => username.trim())
+        .filter(Boolean)
+        .map(username => username.startsWith('@') ? username.slice(1) : username)
 
       const response = await analyzeMetrics({
         type: 'profile',
