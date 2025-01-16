@@ -1,11 +1,13 @@
 import { Metadata } from "next"
-import { ThemeProvider } from "@/components/theme-provider"
-import { MetricsProvider } from "@/context/metrics-context"
+import { Providers } from "./providers"
+import "@/styles/globals.css"
 
 export const metadata: Metadata = {
   title: "Tweet Metrics App",
   description: "Analyze metrics for tweets and profiles",
 }
+
+export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children,
@@ -13,12 +15,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <head />
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <div className="min-h-screen bg-background">
-          {children}
-        </div>
+        <Providers>
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   )
