@@ -15,7 +15,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { analyzeMetrics } from "@/lib/api"
-import type { MetricsResponse } from "@/lib/api"
 
 const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
@@ -113,6 +112,8 @@ export function SearchMetricsForm() {
         urls
       })
       
+      console.log('API Response:', response);
+
       if (response.success) {
         setResults(response.data.posts)
         router.push('/results')
@@ -129,27 +130,24 @@ export function SearchMetricsForm() {
     
     setIsLoading(true)
     try {
-      const profiles = values.profiles
-        .split(/[\n,]/)
-        .map(username => username.trim())
-        .filter(Boolean)
-        .map(username => username.startsWith('@') ? username.slice(1) : username)
+      const username = values.profiles.includes('/') ? 
+        values.profiles.split('/').pop() : 
+        values.profiles
 
       const response = await analyzeMetrics({
         type: 'profile',
-        username: profiles[0], // Currently handling first profile only
+        username,
         maxItems: values.maxItems
       })
       
+      console.log('API Response:', response);
+
       if (response.success) {
         setResults(response.data.posts)
         router.push('/results')
-      } else {
-        setFileError('Error: ' + (('error' in response) ? response.error : 'Unknown error occurred'))
       }
     } catch (error) {
       console.error('Error analyzing profile:', error)
-      setFileError('Error processing request')
     } finally {
       setIsLoading(false)
     }
