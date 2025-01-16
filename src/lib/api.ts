@@ -33,7 +33,7 @@ export async function analyzeMetrics(params: MetricsParams) {
     console.error('API token not configured')
     return {
       success: false,
-      error: 'API token not found in environment variables. Looking for NEXT_PUBLIC_APIFY_API_TOKEN or APIFY_TOKEN'
+      error: 'API token not found in environment variables.'
     }
   }
 
@@ -79,17 +79,17 @@ export async function analyzeMetrics(params: MetricsParams) {
 
     // Transform the raw tweet data to match our Tweet interface
     const transformedTweets = rawData.map((tweet: any) => ({
-      id: tweet.id_str || tweet.id || String(Date.now()),
-      text: tweet.full_text || tweet.text,
-      url: tweet.url || `https://twitter.com/${tweet.user?.screen_name}/status/${tweet.id_str}`,
-      author: tweet.user?.screen_name || tweet.user?.name || cleanUsername,
-      isReply: !!tweet.in_reply_to_status_id_str,
-      isQuote: !!tweet.is_quote_status,
+      id: tweet.id,
+      text: tweet.text,
+      url: tweet.url || tweet.twitterUrl,
+      author: tweet.author?.userName || cleanUsername,
+      isReply: !!tweet.inReplyToId,
+      isQuote: !!tweet.quoted_tweet,
       metrics: {
-        likes: tweet.favorite_count || 0,
-        replies: tweet.reply_count || 0,
-        retweets: tweet.retweet_count || 0,
-        impressions: tweet.impression_count || 0
+        likes: tweet.likeCount || 0,
+        replies: tweet.replyCount || 0,
+        retweets: tweet.retweetCount || 0,
+        impressions: tweet.viewCount || 0
       }
     }))
 
