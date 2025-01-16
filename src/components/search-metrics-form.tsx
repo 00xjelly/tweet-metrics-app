@@ -145,10 +145,11 @@ export function SearchMetricsForm() {
         setResults(response.data.posts)
         router.push('/results')
       } else {
-        setFileError(response.error)
+        setFileError('Error: ' + (('error' in response) ? response.error : 'Unknown error occurred'))
       }
     } catch (error) {
       console.error('Error analyzing profile:', error)
+      setFileError('Error processing request')
     } finally {
       setIsLoading(false)
     }
