@@ -74,13 +74,29 @@ export async function analyzeMetrics(params: MetricsParams) {
       }
     }
 
-    const data = await response.json()
-    console.log('API response data:', data)
+    const rawData = await response.json()
+    console.log('Raw API response:', rawData)
+
+    // Transform the raw tweet data to match our Tweet interface
+    const transformedTweets = rawData.map((tweet: any) => ({
+      id: tweet.id_str || tweet.id || String(Date.now()),
+      text: tweet.full_text || tweet.text,
+      url: tweet.url || `https://twitter.com/${tweet.user?.screen_name}/status/${tweet.id_str}`,
+      author: tweet.user?.screen_name || tweet.user?.name || cleanUsername,
+      isReply: !!tweet.in_reply_to_status_id_str,
+      isQuote: !!tweet.is_quote_status,
+      metrics: {
+        likes: tweet.favorite_count || 0,
+        replies: tweet.reply_count || 0,
+        retweets: tweet.retweet_count || 0,
+        impressions: tweet.impression_count || 0
+      }
+    }))
 
     return {
       success: true,
       data: {
-        posts: data
+        posts: transformedTweets
       }
     }
   } catch (error) {
