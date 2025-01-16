@@ -27,17 +27,14 @@ const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-
 export async function analyzeMetrics(params: MetricsParams) {
   const { type, username, maxItems = 100, since, until } = params
   
-  // Debug: Check if we can access the token
-  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_TOKEN
-  console.log('API Token exists:', !!API_TOKEN)
-  console.log('Token prefix:', API_TOKEN?.substring(0, 4) + '...')
-  console.log('Environment variables:', process.env)
-
+  // Try both possible environment variable names
+  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN || process.env.APIFY_TOKEN
+  
   if (!API_TOKEN) {
     console.error('API token not configured')
     return {
       success: false,
-      error: 'API token not configured. Check environment variables.'
+      error: 'API token not found in environment variables. Looking for NEXT_PUBLIC_APIFY_API_TOKEN or APIFY_TOKEN'
     }
   }
 
