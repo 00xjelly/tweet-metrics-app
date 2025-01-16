@@ -23,7 +23,6 @@ export async function analyzeMetrics(params: AnalyzeMetricsParams): Promise<ApiR
       throw new Error('API token is missing');
     }
 
-    // Call Apify API
     const apiUrl = `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items`;
     console.log('Making API request to:', apiUrl);
 
@@ -33,7 +32,6 @@ export async function analyzeMetrics(params: AnalyzeMetricsParams): Promise<ApiR
       const urls = Array.isArray(params.urls) ? params.urls : [params.urls];
       console.log('Processing URLs:', urls);
 
-      // Extract tweet IDs from URLs
       const tweetIds = urls.map(url => {
         const matches = url.match(/status\/([0-9]+)/);
         return matches ? matches[1] : null;
@@ -79,35 +77,24 @@ export async function analyzeMetrics(params: AnalyzeMetricsParams): Promise<ApiR
 
     const results = await response.json();
     console.log('API response data:', results);
+
+    const transformedPosts = results.map((result: any) => ({
+      author: result.author?.userName || params.username || 'Unknown',
+      url: result.url || result.twitterUrl,
+      text: result.text,
+      metrics: {
+        likes: result.likeCount || result.public_metrics?.like_count || 0,
+        replies: result.replyCount || result.public_metrics?.reply_count || 0,
+        retweets: result.retweetCount || result.public_metrics?.retweet_count || 0,
+        impressions: result.viewCount || result.public_metrics?.impression_count || 0,
+        bookmarks: result.bookmarkCount || result.public_metrics?.bookmark_count || 0
+      }
+    }));
     
-    // Transform Apify response based on search type
     const transformedData = {
       success: true,
       data: {
-        posts: results.map((result: any) => {
-          let url: string;
-          if (params.type === 'post' && params.urls?.length) {
-            url = params.urls[0];
-          } else if (params.type === 'profile' && result.id) {
-            url = `https://twitter.com/${params.username}/status/${result.id}`;
-          } else {
-            url = result.url || ''; // Fallback
-          }
-
-          return {
-            url,
-            author: result.author || params.username,
-            text: result.text,
-            metrics: {
-              likes: result.public_metrics?.like_count || 0,
-              replies: result.public_metrics?.reply_count || 0,
-              retweets: result.public_metrics?.retweet_count || 0,
-              impressions: result.public_metrics?.impression_count || 0,
-              bookmarks: result.public_metrics?.bookmark_count || 0,
-              type: params.type
-            }
-          };
-        })
+        posts: transformedPosts
       }
     };
 
