@@ -5,15 +5,13 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 import { useState } from "react"
-import { DateRange } from "react-day-picker"
 import { useRouter } from 'next/navigation'
+import { useMetrics } from "@/context/metrics-context"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
-import { MultiLineInput } from "./multi-line-input"
 import { analyzeMetrics } from "../lib/api"
 
 const postSearchSchema = z.object({
@@ -29,6 +27,7 @@ const profileSearchSchema = z.object({
 
 export function SearchMetricsForm() {
   const router = useRouter()
+  const { setResults } = useMetrics()
   const [activeTab, setActiveTab] = useState<"profile" | "post" | "metrics">("post")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -66,6 +65,7 @@ export function SearchMetricsForm() {
       console.log('API Response:', response);
 
       if (response.success) {
+        setResults(response.data.posts)
         router.push('/results')
       }
     } catch (error) {
@@ -89,6 +89,7 @@ export function SearchMetricsForm() {
       console.log('API Response:', response);
 
       if (response.success) {
+        setResults(response.data.posts)
         router.push('/results')
       }
     } catch (error) {
@@ -173,10 +174,7 @@ export function SearchMetricsForm() {
 
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
-          <form 
-            onSubmit={postForm.handleSubmit(onPostSubmit)}
-            className="space-y-6"
-          >
+          <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
             <FormField
               control={postForm.control}
               name="urls"
@@ -184,9 +182,10 @@ export function SearchMetricsForm() {
                 <FormItem>
                   <FormLabel>Post URLs</FormLabel>
                   <FormControl>
-                    <MultiLineInput 
+                    <Input 
                       {...field} 
-                      description="Enter post URLs, one per line. Example: twitter.com/username/status/123456789"
+                      placeholder="twitter.com/username/status/123456789"
+                      type="text"
                     />
                   </FormControl>
                   <FormMessage />
