@@ -4,7 +4,7 @@ import { MessageCircle, Heart, Eye, Repeat2 } from 'lucide-react'
 export function TweetCard({ tweet }: { tweet: Tweet }) {
   return (
     <div className="p-4 rounded-lg border bg-card">
-      <div className="flex justify-between items-baseline gap-4 text-xs mb-2">
+      <div className="flex justify-between items-center text-xs mb-2">
         <span className="text-muted-foreground">
           {new Date(tweet.createdAt).toLocaleDateString()}
         </span>
@@ -19,12 +19,12 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1">
           <div className="font-medium">{tweet.author}</div>
-          <p className="text-sm text-muted-foreground line-clamp-2">{tweet.text}</p>
+          <p className="text-sm text-muted-foreground truncate">{tweet.text}</p>
         </div>
 
-        <div className="flex flex-col gap-2 text-muted-foreground text-sm">
+        <div className="flex gap-4 text-muted-foreground text-sm shrink-0">
           <div className="flex items-center gap-1">
             <Heart className="w-4 h-4" /> {tweet.metrics.likes}
           </div>
