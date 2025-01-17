@@ -27,7 +27,6 @@ export type MetricsParams = {
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
 function extractUsername(url: string): string {
-  // Handle both profile and status URLs
   const match = url.match(/(?:x\.com|twitter\.com)\/([^/]+)(?:\/status\/\d+)?/)
   return match ? match[1] : url
 }
@@ -93,27 +92,29 @@ export async function analyzeMetrics(params: MetricsParams) {
     const data = await response.json()
     console.log('API response data:', data)
 
-    // Transform the data to match our Tweet interface
-    const transformedPosts = data.slice(0, maxItems).map((tweet: any) => {
-      // Extract date from tweet
-      const createdAt = tweet.created_at || tweet.createdAt || new Date().toISOString()
-      
-      return {
-        id: tweet.id || tweet.tweetId || String(Date.now()),
-        text: tweet.text || tweet.full_text || '',
-        url: tweet.url || tweet.twitterUrl || '',
-        author: tweet.author?.userName || username || '',
-        isReply: !!tweet.inReplyToId,
-        isQuote: !!tweet.quoted_tweet,
-        createdAt,
-        metrics: {
-          likes: tweet.likeCount || 0,
-          replies: tweet.replyCount || 0,
-          retweets: tweet.retweetCount || 0,
-          impressions: tweet.viewCount || 0
+    // Filter out mock tweets and transform the data
+    const transformedPosts = data
+      .filter((tweet: any) => tweet.type !== 'mock_tweet')
+      .slice(0, maxItems)
+      .map((tweet: any) => {
+        const createdAt = tweet.created_at || tweet.createdAt || new Date().toISOString()
+        
+        return {
+          id: tweet.id || tweet.tweetId || String(Date.now()),
+          text: tweet.text || tweet.full_text || '',
+          url: tweet.url || tweet.twitterUrl || '',
+          author: tweet.author?.userName || username || '',
+          isReply: !!tweet.inReplyToId,
+          isQuote: !!tweet.quoted_tweet,
+          createdAt,
+          metrics: {
+            likes: tweet.likeCount || 0,
+            replies: tweet.replyCount || 0,
+            retweets: tweet.retweetCount || 0,
+            impressions: tweet.viewCount || 0
+          }
         }
-      }
-    })
+      })
 
     return {
       success: true,
