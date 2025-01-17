@@ -38,7 +38,7 @@ export function SearchMetricsForm() {
     resolver: zodResolver(profileSearchSchema),
     defaultValues: {
       username: "",
-      maxItems: 100,
+      maxItems: 50,
       dateRange: {
         since: undefined,
         until: undefined
@@ -153,7 +153,7 @@ export function SearchMetricsForm() {
                     <FormLabel>From Date</FormLabel>
                     <FormControl>
                       <Input 
-                        type="datetime-local" 
+                        type="date" 
                         {...field}
                       />
                     </FormControl>
@@ -170,7 +170,7 @@ export function SearchMetricsForm() {
                     <FormLabel>To Date</FormLabel>
                     <FormControl>
                       <Input 
-                        type="datetime-local" 
+                        type="date" 
                         {...field}
                       />
                     </FormControl>
