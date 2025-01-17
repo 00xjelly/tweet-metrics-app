@@ -26,6 +26,20 @@ export async function POST(req: Request) {
       const headers = lines[0].split(",");
       const profileIndex = headers.findIndex(
         (h) => h.toLowerCase().includes("profile") || h.toLowerCase().includes("username")
+    // Handle profiles input - split by commas and clean
+    let profileList: string[] = [];
+    if (profiles) {
+      profileList = profiles.split(",").map(p => p.trim()).filter(Boolean);
+    }
+    
+    // Handle CSV file if uploaded
+    if (file) {
+      const text = await file.text();
+      const lines = text.split("\n");
+      // Assuming first line is header
+      const headers = lines[0].split(",");
+      const profileIndex = headers.findIndex(h => 
+        h.toLowerCase().includes("profile") || h.toLowerCase().includes("username")
       );
       
       if (profileIndex === -1) {
@@ -57,6 +71,32 @@ export async function POST(req: Request) {
     const data = {
       profiles: profileList,
       count: countNum,
+
+      const csvProfiles = lines
+        .slice(1)
+        .map(line => line.split(",")[profileIndex]?.trim())
+        .filter(Boolean);
+      
+      profileList = [...profileList, ...csvProfiles];
+    }
+
+    if (!profileList.length) {
+      throw new Error("No valid profiles provided");
+    }
+
+    // Remove duplicates using Array.from instead of spread
+    profileList = Array.from(new Set(profileList));
+
+    // Parse count with defaults
+    const numTweets = count ? parseInt(count) : 100;
+    if (numTweets > 200) {
+      throw new Error("Maximum tweet count is 200");
+    }
+
+    // Call your API here
+    const data = {
+      profiles: profileList,
+      count: numTweets,
       metric
     };
 
