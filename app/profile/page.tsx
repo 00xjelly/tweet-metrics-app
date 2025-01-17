@@ -19,8 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { NumberInput } from "@/components/ui/number-input";
-import { Separator } from "@/components/ui/separator";
 
 export default function ProfileMetricsPage() {
   const [error, setError] = React.useState<string | null>(null);
@@ -69,7 +67,7 @@ export default function ProfileMetricsPage() {
           </p>
         </div>
       </div>
-      <Separator className="my-4" />
+      <hr className="my-4 border-t border-border" />
       <div className="grid gap-4 grid-cols-2">
         <Card>
           <form onSubmit={handleSubmit}>
