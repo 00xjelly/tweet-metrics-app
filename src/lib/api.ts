@@ -20,15 +20,15 @@ export type MetricsParams = {
   urls?: string[]
   since?: string
   until?: string
+  includeReplies?: boolean
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
 export async function analyzeMetrics(params: MetricsParams) {
-  const { type, username, maxItems = 100, since, until } = params
+  console.log('Analyzing metrics with params:', params)
   
-  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN || process.env.APIFY_TOKEN
-  
+  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN
   if (!API_TOKEN) {
     console.error('API token not configured')
     return {
@@ -37,26 +37,26 @@ export async function analyzeMetrics(params: MetricsParams) {
     }
   }
 
-  // Clean up username if it's a URL
-  const cleanUsername = username?.includes('/') ? 
-    username.split('/').pop() : 
-    username
-
-  // Construct the search query
-  const searchQuery = `from:${cleanUsername} ${since ? `since:${since}` : ''} ${until ? `until:${until}` : ''}`
+  const url = `${BASE_API_URL}?token=${API_TOKEN}`
   
-  const requestBody = {
-    searchTerms: [searchQuery],
+  // Build search query
+  let searchQuery = `from:${params.username}`
+  if (params.since) {
+    searchQuery += ` since:${params.since}`
+  }
+  if (params.until) {
+    searchQuery += ` until:${params.until}`
   }
 
-  const url = `${BASE_API_URL}?token=${API_TOKEN}`
+  const requestBody = {
+    searchTerms: [searchQuery],
+    maxTweets: params.maxItems || 100
+  }
+
+  console.log('Making API request to:', url.replace(API_TOKEN, '***'))
+  console.log('Request body:', requestBody)
 
   try {
-    console.log('Making API request with params:', {
-      url: url.replace(API_TOKEN, '***'),
-      body: requestBody
-    })
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -66,23 +66,22 @@ export async function analyzeMetrics(params: MetricsParams) {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('API request failed:', response.status, errorText)
+      console.error('API request failed:', response.status)
       return {
         success: false,
-        error: `API request failed: ${errorText}`
+        error: `API request failed with status ${response.status}`
       }
     }
 
-    const rawData = await response.json()
-    console.log('Raw API response:', rawData)
+    const data = await response.json()
+    console.log('API response data:', data)
 
-    // Transform the raw tweet data to match our Tweet interface
-    const transformedTweets = rawData.map((tweet: any) => ({
-      id: tweet.id,
-      text: tweet.text,
-      url: tweet.url || tweet.twitterUrl,
-      author: tweet.author?.userName || cleanUsername,
+    // Transform the data to match our Tweet interface
+    const transformedPosts = data.map((tweet: any) => ({
+      id: tweet.id || tweet.tweetId || String(Date.now()),
+      text: tweet.text || tweet.full_text || '',
+      url: tweet.url || tweet.twitterUrl || '',
+      author: tweet.author?.userName || params.username || '',
       isReply: !!tweet.inReplyToId,
       isQuote: !!tweet.quoted_tweet,
       metrics: {
@@ -96,14 +95,14 @@ export async function analyzeMetrics(params: MetricsParams) {
     return {
       success: true,
       data: {
-        posts: transformedTweets
+        posts: transformedPosts
       }
     }
   } catch (error) {
-    console.error('An error occurred:', error)
+    console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
+      error: 'Failed to analyze metrics'
     }
   }
 }
