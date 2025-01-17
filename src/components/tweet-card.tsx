@@ -1,10 +1,13 @@
 import { Tweet } from '@/lib/api'
+import { MessageCircle, Heart, Eye, Repeat2 } from 'lucide-react'
 
 export function TweetCard({ tweet }: { tweet: Tweet }) {
   return (
-    <div className="p-4 space-y-4 rounded-lg border bg-card">
-      <div className="flex items-start justify-between mb-1 text-xs text-muted-foreground">
-        <span>{new Date(tweet.createdAt).toLocaleDateString()}</span>
+    <div className="p-4 rounded-lg border bg-card">
+      <div className="flex justify-between items-baseline gap-4 text-xs mb-2">
+        <span className="text-muted-foreground">
+          {new Date(tweet.createdAt).toLocaleDateString()}
+        </span>
         <a 
           href={tweet.url} 
           target="_blank" 
@@ -15,16 +18,26 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
         </a>
       </div>
 
-      <div>
-        <div className="font-medium mb-1">{tweet.author}</div>
-        <p className="text-sm text-muted-foreground line-clamp-2">{tweet.text}</p>
-      </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="font-medium">{tweet.author}</div>
+          <p className="text-sm text-muted-foreground line-clamp-2">{tweet.text}</p>
+        </div>
 
-      <div className="grid grid-cols-4 gap-2 text-muted-foreground">
-        <div>❤️ {tweet.metrics.likes}</div>
-        <div>🔁 {tweet.metrics.retweets}</div>
-        <div>💬 {tweet.metrics.replies}</div>
-        <div>👁️ {tweet.metrics.impressions}</div>
+        <div className="flex flex-col gap-2 text-muted-foreground text-sm">
+          <div className="flex items-center gap-1">
+            <Heart className="w-4 h-4" /> {tweet.metrics.likes}
+          </div>
+          <div className="flex items-center gap-1">
+            <Repeat2 className="w-4 h-4" /> {tweet.metrics.retweets}
+          </div>
+          <div className="flex items-center gap-1">
+            <MessageCircle className="w-4 h-4" /> {tweet.metrics.replies}
+          </div>
+          <div className="flex items-center gap-1">
+            <Eye className="w-4 h-4" /> {tweet.metrics.impressions}
+          </div>
+        </div>
       </div>
     </div>
   )
