@@ -1,5 +1,5 @@
 import { Tweet } from '@/lib/api'
-import { MessageCircle, Heart, Eye, Repeat2 } from 'lucide-react'
+import { MessageCircle, Heart, Eye, Repeat2, Quote, Reply } from 'lucide-react'
 
 export function TweetCard({ tweet }: { tweet: Tweet }) {
   return (
@@ -10,6 +10,22 @@ export function TweetCard({ tweet }: { tweet: Tweet }) {
           <span className="text-muted-foreground">
             {new Date(tweet.createdAt).toLocaleDateString()}
           </span>
+          {(tweet.isReply || tweet.isQuote) && (
+            <span className="flex gap-1.5 text-muted-foreground ml-1">
+              {tweet.isReply && (
+                <span className="flex items-center gap-0.5">
+                  <Reply className="w-3 h-3" />
+                  Reply
+                </span>
+              )}
+              {tweet.isQuote && (
+                <span className="flex items-center gap-0.5">
+                  <Quote className="w-3 h-3" />
+                  Quote
+                </span>
+              )}
+            </span>
+          )}
         </div>
         <a 
           href={tweet.url} 
