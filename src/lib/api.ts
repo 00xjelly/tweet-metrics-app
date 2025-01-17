@@ -5,6 +5,7 @@ export type Tweet = {
   author: string
   isReply: boolean
   isQuote: boolean
+  createdAt: string
   metrics: {
     likes: number
     replies: number
@@ -56,9 +57,11 @@ export async function analyzeMetrics(params: MetricsParams) {
     searchQuery += ` -filter:replies`
   }
 
+  const maxItems = Math.min(params.maxItems || 100, 200)
+
   const requestBody = {
     searchTerms: [searchQuery],
-    maxTweets: params.maxItems || 100
+    maxItems
   }
 
   console.log('Making API request to:', url.replace(API_TOKEN, '***'))
@@ -92,13 +95,14 @@ export async function analyzeMetrics(params: MetricsParams) {
       author: tweet.author?.userName || username || '',
       isReply: !!tweet.inReplyToId,
       isQuote: !!tweet.quoted_tweet,
+      createdAt: tweet.createdAt || tweet.created_at || new Date().toISOString(),
       metrics: {
         likes: tweet.likeCount || 0,
         replies: tweet.replyCount || 0,
         retweets: tweet.retweetCount || 0,
         impressions: tweet.viewCount || 0
       }
-    }))
+    })).slice(0, maxItems)
 
     return {
       success: true,
