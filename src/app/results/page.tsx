@@ -21,7 +21,7 @@ export default function ResultsPage() {
     const cleanText = (text: string) => text.replace(/[\r\n]+/g, ' ').replace(/"/g, '""')
 
     const csvContent = [
-      ['Text', 'URL', 'Likes', 'Retweets', 'Replies', 'Impressions', 'Created At', 'Author'].join(','),
+      ['Text', 'URL', 'Likes', 'Retweets', 'Replies', 'Impressions', 'Created At', 'Author', 'Is Reply', 'Is Quote'].join(','),
       ...results.map(tweet => [
         `"${cleanText(tweet.text)}"`,
         tweet.url,
@@ -30,7 +30,9 @@ export default function ResultsPage() {
         tweet.metrics.replies,
         tweet.metrics.impressions,
         tweet.createdAt,
-        tweet.author
+        tweet.author,
+        tweet.isReply,
+        tweet.isQuote
       ].join(','))
     ].join('\n')
 
