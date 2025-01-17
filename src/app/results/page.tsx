@@ -16,33 +16,39 @@ export default function ResultsPage() {
     return null
   }
 
+  const handleExport = () => {
+    // Clean and format text by replacing newlines and quotes
+    const cleanText = (text: string) => text.replace(/[\r\n]+/g, ' ').replace(/"/g, '""')
+
+    const csvContent = [
+      ['Text', 'URL', 'Likes', 'Retweets', 'Replies', 'Impressions', 'Created At', 'Author'].join(','),
+      ...results.map(tweet => [
+        `"${cleanText(tweet.text)}"`,
+        tweet.url,
+        tweet.metrics.likes,
+        tweet.metrics.retweets,
+        tweet.metrics.replies,
+        tweet.metrics.impressions,
+        tweet.createdAt,
+        tweet.author
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'twitter-metrics.csv'
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="container py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold">Analysis Results</h1>
         <Button
-          onClick={() => {
-            const csv = [
-              ['Text', 'URL', 'Likes', 'Retweets', 'Replies', 'Impressions', 'Created At'].join(','),
-              ...results.map(tweet => [
-                `"${tweet.text}"`,
-                tweet.url,
-                tweet.metrics.likes,
-                tweet.metrics.retweets,
-                tweet.metrics.replies,
-                tweet.metrics.impressions,
-                tweet.createdAt
-              ].join(','))
-            ].join('\n')
-
-            const blob = new Blob([csv], { type: 'text/csv' })
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'twitter-metrics.csv'
-            a.click()
-            window.URL.revokeObjectURL(url)
-          }}
+          onClick={handleExport}
           className="gap-2"
         >
           <Download className="w-4 h-4" />
