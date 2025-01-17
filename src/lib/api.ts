@@ -20,7 +20,6 @@ export type MetricsParams = {
   urls?: string[]
   since?: string
   until?: string
-  includeReplies?: boolean
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
@@ -39,12 +38,19 @@ export async function analyzeMetrics(params: MetricsParams) {
 
   const url = `${BASE_API_URL}?token=${API_TOKEN}`
   
+  // Clean up username if it's a URL
+  const username = params.username?.includes('/') ? 
+    params.username.split('/').pop()?.replace('@', '') : 
+    params.username?.replace('@', '')
+
   // Build search query
-  let searchQuery = `from:${params.username}`
+  let searchQuery = `from:${username}`
   if (params.since) {
+    // Format: YYYY-MM-DD
     searchQuery += ` since:${params.since}`
   }
   if (params.until) {
+    // Format: YYYY-MM-DD
     searchQuery += ` until:${params.until}`
   }
 
@@ -81,7 +87,7 @@ export async function analyzeMetrics(params: MetricsParams) {
       id: tweet.id || tweet.tweetId || String(Date.now()),
       text: tweet.text || tweet.full_text || '',
       url: tweet.url || tweet.twitterUrl || '',
-      author: tweet.author?.userName || params.username || '',
+      author: tweet.author?.userName || username || '',
       isReply: !!tweet.inReplyToId,
       isQuote: !!tweet.quoted_tweet,
       metrics: {
