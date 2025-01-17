@@ -5,6 +5,7 @@ export type Tweet = {
   author: string
   isReply: boolean
   isQuote: boolean
+  createdAt: string
   metrics: {
     likes: number
     replies: number
@@ -20,6 +21,7 @@ export type MetricsParams = {
   urls?: string[]
   since?: string
   until?: string
+  includeReplies?: boolean
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
@@ -46,12 +48,13 @@ export async function analyzeMetrics(params: MetricsParams) {
   // Build search query
   let searchQuery = `from:${username}`
   if (params.since) {
-    // Format: YYYY-MM-DD
     searchQuery += ` since:${params.since}`
   }
   if (params.until) {
-    // Format: YYYY-MM-DD
     searchQuery += ` until:${params.until}`
+  }
+  if (!params.includeReplies) {
+    searchQuery += ` -filter:replies`
   }
 
   const requestBody = {
@@ -90,6 +93,7 @@ export async function analyzeMetrics(params: MetricsParams) {
       author: tweet.author?.userName || username || '',
       isReply: !!tweet.inReplyToId,
       isQuote: !!tweet.quoted_tweet,
+      createdAt: tweet.createdAt || tweet.created_at || new Date().toISOString(),
       metrics: {
         likes: tweet.likeCount || 0,
         replies: tweet.replyCount || 0,
