@@ -21,6 +21,7 @@ const postSearchSchema = z.object({
 const profileSearchSchema = z.object({
   username: z.string().min(1, "Please enter a username"),
   maxItems: z.number().min(1).max(200).optional(),
+  includeReplies: z.boolean().default(false),
   dateRange: z.object({
     since: z.string().optional(),
     until: z.string().optional()
@@ -39,6 +40,7 @@ export function SearchMetricsForm() {
     defaultValues: {
       username: "",
       maxItems: 50,
+      includeReplies: false,
       dateRange: {
         since: undefined,
         until: undefined
@@ -65,7 +67,8 @@ export function SearchMetricsForm() {
         username: values.username,
         maxItems: values.maxItems,
         since: values.dateRange?.since,
-        until: values.dateRange?.until
+        until: values.dateRange?.until,
+        includeReplies: values.includeReplies
       })
       
       if (!response.success) {
@@ -179,6 +182,26 @@ export function SearchMetricsForm() {
                 )}
               />
             </div>
+
+            <FormField
+              control={profileForm.control}
+              name="includeReplies"
+              render={({ field }) => (
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormLabel className="cursor-pointer text-sm font-medium leading-none">
+                    Include Replies
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={profileForm.control}
