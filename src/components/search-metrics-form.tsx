@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { analyzeMetrics } from "@/lib/api"
 
 const postSearchSchema = z.object({
@@ -188,16 +187,18 @@ export function SearchMetricsForm() {
               control={profileForm.control}
               name="includeReplies"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormItem className="flex flex-row items-center space-x-2">
                   <FormControl>
-                    <Checkbox
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onChange={(e) => field.onChange(e.target.checked)}
                     />
                   </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Include Replies</FormLabel>
-                  </div>
+                  <FormLabel className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Include Replies
+                  </FormLabel>
                 </FormItem>
               )}
             />
