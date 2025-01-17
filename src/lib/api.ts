@@ -88,21 +88,26 @@ export async function analyzeMetrics(params: MetricsParams) {
     console.log('API response data:', data)
 
     // Transform the data to match our Tweet interface
-    const transformedPosts = data.map((tweet: any) => ({
-      id: tweet.id || tweet.tweetId || String(Date.now()),
-      text: tweet.text || tweet.full_text || '',
-      url: tweet.url || tweet.twitterUrl || '',
-      author: tweet.author?.userName || username || '',
-      isReply: !!tweet.inReplyToId,
-      isQuote: !!tweet.quoted_tweet,
-      createdAt: tweet.createdAt || tweet.created_at || new Date().toISOString(),
-      metrics: {
-        likes: tweet.likeCount || 0,
-        replies: tweet.replyCount || 0,
-        retweets: tweet.retweetCount || 0,
-        impressions: tweet.viewCount || 0
+    const transformedPosts = data.slice(0, maxItems).map((tweet: any) => {
+      // Extract date from tweet
+      const createdAt = tweet.created_at || tweet.createdAt || new Date().toISOString()
+      
+      return {
+        id: tweet.id || tweet.tweetId || String(Date.now()),
+        text: tweet.text || tweet.full_text || '',
+        url: tweet.url || tweet.twitterUrl || '',
+        author: tweet.author?.userName || username || '',
+        isReply: !!tweet.inReplyToId,
+        isQuote: !!tweet.quoted_tweet,
+        createdAt,
+        metrics: {
+          likes: tweet.likeCount || 0,
+          replies: tweet.replyCount || 0,
+          retweets: tweet.retweetCount || 0,
+          impressions: tweet.viewCount || 0
+        }
       }
-    })).slice(0, maxItems)
+    })
 
     return {
       success: true,
