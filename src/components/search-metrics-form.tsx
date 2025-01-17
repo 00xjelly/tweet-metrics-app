@@ -7,7 +7,6 @@ import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
-
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -18,6 +17,9 @@ const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
 })
 
+const oneYearAgo = new Date()
+oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+
 const profileSearchSchema = z.object({
   username: z.string().min(1, "Please enter a username"),
   maxItems: z.number().min(1).max(200).optional(),
@@ -26,6 +28,23 @@ const profileSearchSchema = z.object({
     since: z.string().optional(),
     until: z.string().optional()
   }).optional()
+}).refine((data) => {
+  // Check if at least dates or maxItems is provided
+  const hasDateRange = data.dateRange?.since || data.dateRange?.until
+  const hasMaxItems = typeof data.maxItems === 'number'
+  return hasDateRange || hasMaxItems
+}, {
+  message: "Please provide either a date range or number of items"
+}).refine((data) => {
+  // Validate date range is within one year
+  if (data.dateRange?.since) {
+    const sinceDate = new Date(data.dateRange.since)
+    return sinceDate >= oneYearAgo
+  }
+  return true
+}, {
+  message: "Date range cannot exceed one year from today",
+  path: ["dateRange", "since"]
 })
 
 export function SearchMetricsForm() {
@@ -158,6 +177,8 @@ export function SearchMetricsForm() {
                       <Input 
                         type="date" 
                         {...field}
+                        min={oneYearAgo.toISOString().split('T')[0]}
+                        max={new Date().toISOString().split('T')[0]}
                       />
                     </FormControl>
                     <FormMessage />
@@ -175,6 +196,8 @@ export function SearchMetricsForm() {
                       <Input 
                         type="date" 
                         {...field}
+                        min={oneYearAgo.toISOString().split('T')[0]}
+                        max={new Date().toISOString().split('T')[0]}
                       />
                     </FormControl>
                     <FormMessage />
@@ -182,6 +205,26 @@ export function SearchMetricsForm() {
                 )}
               />
             </div>
+
+            <FormField
+              control={profileForm.control}
+              name="maxItems"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of tweets to analyze (max 200)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="number"
+                      min={1}
+                      max={200}
+                      onChange={e => field.onChange(parseInt(e.target.value) || undefined)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={profileForm.control}
@@ -196,29 +239,9 @@ export function SearchMetricsForm() {
                       onChange={(e) => field.onChange(e.target.checked)}
                     />
                   </FormControl>
-                  <FormLabel className="cursor-pointer text-sm font-medium leading-none">
+                  <FormLabel className="text-sm cursor-pointer">
                     Include Replies
                   </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={profileForm.control}
-              name="maxItems"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Number of tweets to analyze (max 200)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      type="number"
-                      min={1}
-                      max={200}
-                      onChange={e => field.onChange(parseInt(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
