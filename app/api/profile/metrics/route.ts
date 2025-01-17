@@ -40,8 +40,8 @@ export async function POST(req: Request) {
       throw new Error("No valid profiles provided");
     }
 
-    // Remove duplicates
-    profileList = [...new Set(profileList)];
+    // Remove duplicates using Array.from instead of spread
+    profileList = Array.from(new Set(profileList));
 
     // Parse count with defaults
     const numTweets = count ? parseInt(count) : 100;
