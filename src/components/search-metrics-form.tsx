@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { analyzeMetrics } from "@/lib/api"
 
 const postSearchSchema = z.object({
@@ -22,7 +21,6 @@ const postSearchSchema = z.object({
 const profileSearchSchema = z.object({
   username: z.string().min(1, "Please enter a username"),
   maxItems: z.number().min(1).max(200).optional(),
-  includeReplies: z.boolean().default(false),
   dateRange: z.object({
     since: z.string().optional(),
     until: z.string().optional()
@@ -41,7 +39,6 @@ export function SearchMetricsForm() {
     defaultValues: {
       username: "",
       maxItems: 50,
-      includeReplies: false,
       dateRange: {
         since: undefined,
         until: undefined
@@ -68,8 +65,7 @@ export function SearchMetricsForm() {
         username: values.username,
         maxItems: values.maxItems,
         since: values.dateRange?.since,
-        until: values.dateRange?.until,
-        includeReplies: values.includeReplies
+        until: values.dateRange?.until
       })
       
       if (!response.success) {
@@ -183,24 +179,6 @@ export function SearchMetricsForm() {
                 )}
               />
             </div>
-
-            <FormField
-              control={profileForm.control}
-              name="includeReplies"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Include Replies</FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={profileForm.control}
