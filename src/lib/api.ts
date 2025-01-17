@@ -26,6 +26,12 @@ export type MetricsParams = {
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
+function extractUsername(url: string): string {
+  // Handle both profile and status URLs
+  const match = url.match(/(?:x\.com|twitter\.com)\/([^/]+)(?:\/status\/\d+)?/)
+  return match ? match[1] : url
+}
+
 export async function analyzeMetrics(params: MetricsParams) {
   console.log('Analyzing metrics with params:', params)
   
@@ -41,9 +47,9 @@ export async function analyzeMetrics(params: MetricsParams) {
   const url = `${BASE_API_URL}?token=${API_TOKEN}`
   
   // Clean up username if it's a URL
-  const username = params.username?.includes('/') ? 
-    params.username.split('/').pop()?.replace('@', '') : 
-    params.username?.replace('@', '')
+  const username = params.username ? 
+    extractUsername(params.username).replace('@', '') : 
+    undefined
 
   // Build search query
   let searchQuery = `from:${username}`
