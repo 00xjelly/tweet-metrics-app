@@ -5,6 +5,7 @@ export type Tweet = {
   author: string
   isReply: boolean
   isQuote: boolean
+  createdAt: string
   metrics: {
     likes: number
     replies: number
@@ -20,15 +21,22 @@ export type MetricsParams = {
   urls?: string[]
   since?: string
   until?: string
+  includeReplies?: boolean
+  twitterContent?: string
+  '@'?: string
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
 
+function extractUsername(url: string): string {
+  const match = url.match(/(?:x\.com|twitter\.com)\/([^/]+)(?:\/status\/\d+)?/)
+  return match ? match[1] : url
+}
+
 export async function analyzeMetrics(params: MetricsParams) {
-  const { type, username, maxItems = 100, since, until } = params
+  console.log('Analyzing metrics with params:', params)
   
-  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN || process.env.APIFY_TOKEN
-  
+  const API_TOKEN = process.env.NEXT_PUBLIC_APIFY_API_TOKEN
   if (!API_TOKEN) {
     console.error('API token not configured')
     return {
@@ -37,26 +45,47 @@ export async function analyzeMetrics(params: MetricsParams) {
     }
   }
 
-  // Clean up username if it's a URL
-  const cleanUsername = username?.includes('/') ? 
-    username.split('/').pop() : 
-    username
-
-  // Construct the search query
-  const searchQuery = `from:${cleanUsername} ${since ? `since:${since}` : ''} ${until ? `until:${until}` : ''}`
+  const url = `${BASE_API_URL}?token=${API_TOKEN}`
   
-  const requestBody = {
-    searchTerms: [searchQuery],
+  // Clean up username if it's a URL
+  const username = params.username ? 
+    extractUsername(params.username).replace('@', '') : 
+    undefined
+
+  // Build search query
+  let searchQuery = `from:${username}`
+  
+  if (params.twitterContent) {
+    searchQuery += ` ${params.twitterContent}`
+  }
+  
+  if (params['@']) {
+    searchQuery += ` @${params['@']}`
+  }
+  
+  if (params.since) {
+    searchQuery += ` since:${params.since}`
+  }
+  
+  if (params.until) {
+    searchQuery += ` until:${params.until}`
+  }
+  
+  if (!params.includeReplies) {
+    searchQuery += ` -filter:replies`
   }
 
-  const url = `${BASE_API_URL}?token=${API_TOKEN}`
+  const maxItems = Math.min(params.maxItems || 100, 200)
+
+  const requestBody = {
+    searchTerms: [searchQuery],
+    maxItems
+  }
+
+  console.log('Making API request to:', url.replace(API_TOKEN, '***'))
+  console.log('Request body:', requestBody)
 
   try {
-    console.log('Making API request with params:', {
-      url: url.replace(API_TOKEN, '***'),
-      body: requestBody
-    })
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -66,44 +95,51 @@ export async function analyzeMetrics(params: MetricsParams) {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('API request failed:', response.status, errorText)
+      console.error('API request failed:', response.status)
       return {
         success: false,
-        error: `API request failed: ${errorText}`
+        error: `API request failed with status ${response.status}`
       }
     }
 
-    const rawData = await response.json()
-    console.log('Raw API response:', rawData)
+    const data = await response.json()
+    console.log('API response data:', data)
 
-    // Transform the raw tweet data to match our Tweet interface
-    const transformedTweets = rawData.map((tweet: any) => ({
-      id: tweet.id,
-      text: tweet.text,
-      url: tweet.url || tweet.twitterUrl,
-      author: tweet.author?.userName || cleanUsername,
-      isReply: !!tweet.inReplyToId,
-      isQuote: !!tweet.quoted_tweet,
-      metrics: {
-        likes: tweet.likeCount || 0,
-        replies: tweet.replyCount || 0,
-        retweets: tweet.retweetCount || 0,
-        impressions: tweet.viewCount || 0
-      }
-    }))
+    // Filter out mock tweets and transform the data
+    const transformedPosts = data
+      .filter((tweet: any) => tweet.type !== 'mock_tweet')
+      .slice(0, maxItems)
+      .map((tweet: any) => {
+        const createdAt = tweet.created_at || tweet.createdAt || new Date().toISOString()
+        
+        return {
+          id: tweet.id || tweet.tweetId || String(Date.now()),
+          text: tweet.text || tweet.full_text || '',
+          url: tweet.url || tweet.twitterUrl || '',
+          author: tweet.author?.userName || username || '',
+          isReply: !!tweet.inReplyToId,
+          isQuote: !!tweet.quoted_tweet,
+          createdAt,
+          metrics: {
+            likes: tweet.likeCount || 0,
+            replies: tweet.replyCount || 0,
+            retweets: tweet.retweetCount || 0,
+            impressions: tweet.viewCount || 0
+          }
+        }
+      })
 
     return {
       success: true,
       data: {
-        posts: transformedTweets
+        posts: transformedPosts
       }
     }
   } catch (error) {
-    console.error('An error occurred:', error)
+    console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
+      error: 'Failed to analyze metrics'
     }
   }
 }
