@@ -22,6 +22,8 @@ export type MetricsParams = {
   since?: string
   until?: string
   includeReplies?: boolean
+  twitterContent?: string
+  '@'?: string
 }
 
 const BASE_API_URL = 'https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items'
@@ -52,12 +54,23 @@ export async function analyzeMetrics(params: MetricsParams) {
 
   // Build search query
   let searchQuery = `from:${username}`
+  
+  if (params.twitterContent) {
+    searchQuery += ` ${params.twitterContent}`
+  }
+  
+  if (params['@']) {
+    searchQuery += ` @${params['@']}`
+  }
+  
   if (params.since) {
     searchQuery += ` since:${params.since}`
   }
+  
   if (params.until) {
     searchQuery += ` until:${params.until}`
   }
+  
   if (!params.includeReplies) {
     searchQuery += ` -filter:replies`
   }
