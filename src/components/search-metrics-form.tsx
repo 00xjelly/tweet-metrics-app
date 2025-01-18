@@ -23,6 +23,8 @@ oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
 const profileFormSchema = z.object({
   username: z.string().min(1, "Please enter at least one username"),
+  mentionKeyword: z.string().optional(),
+  mentionUsername: z.string().optional(),
   csvFile: z.any().optional(),
   maxItems: z.number().max(200).optional(),
   includeReplies: z.boolean().default(false),
@@ -45,6 +47,8 @@ export function SearchMetricsForm() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       username: "",
+      mentionKeyword: "",
+      mentionUsername: "",
       maxItems: 50,
       includeReplies: false,
       dateRange: {
@@ -108,7 +112,9 @@ export function SearchMetricsForm() {
           maxItems: values.maxItems,
           since: values.dateRange?.since,
           until: values.dateRange?.until,
-          includeReplies: values.includeReplies
+          includeReplies: values.includeReplies,
+          mentionKeyword: values.mentionKeyword || undefined,
+          mentionUsername: values.mentionUsername || undefined
         })
       ))
       
@@ -182,6 +188,34 @@ export function SearchMetricsForm() {
                   <FormLabel>X Username</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="multiple profiles, separated by ," />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="mentionKeyword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Filter by Keyword</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="keyword or phrase to filter by" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="mentionUsername"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Filter by Mentioned Username</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="username without @" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
