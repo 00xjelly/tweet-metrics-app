@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
+import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
 import { useState } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { analyzeMetrics } from "@/lib/api"
+import Papa from 'papaparse'
 
 const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
@@ -21,8 +22,11 @@ const oneYearAgo = new Date()
 oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
 const profileSearchSchema = z.object({
-  username: z.string().min(1, "Please enter a username"),
-  maxItems: z.number().min(1).max(200).optional(),
+  username: z.string().min(1, "Please enter at least one username").transform(str => 
+    str.split(',').map(s => s.trim()).filter(Boolean)
+  ),
+  csvFile: z.any().optional(),
+  maxItems: z.number().max(200).optional(),
   includeReplies: z.boolean().default(false),
   dateRange: z.object({
     since: z.string().optional(),
@@ -53,6 +57,7 @@ export function SearchMetricsForm() {
   const [activeTab, setActiveTab] = useState<"profile" | "post">("profile")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [csvProfiles, setCsvProfiles] = useState<string[]>([])
 
   const profileForm = useForm<z.infer<typeof profileSearchSchema>>({
     resolver: zodResolver(profileSearchSchema),
@@ -74,6 +79,34 @@ export function SearchMetricsForm() {
     },
   })
 
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const text = await file.text()
+    Papa.parse(text, {
+      complete: (results) => {
+        const profiles = results.data
+          .flat()
+          .filter(Boolean)
+          .map(String)
+          .map(s => s.trim())
+          .filter(s => s.length > 0)
+        
+        setCsvProfiles(profiles)
+        const currentUsernames = profileForm.getValues().username
+        const combined = [...new Set([...currentUsernames.split(','), ...profiles])]
+          .filter(Boolean)
+          .join(', ')
+        profileForm.setValue('username', combined)
+      },
+      error: (error) => {
+        setError('Error parsing CSV file')
+        console.error('CSV parsing error:', error)
+      }
+    })
+  }
+
   async function onProfileSubmit(values: z.infer<typeof profileSearchSchema>) {
     console.log('Profile form submitted with values:', values);
     
@@ -81,24 +114,35 @@ export function SearchMetricsForm() {
     setError(null)
     
     try {
-      const response = await analyzeMetrics({
-        type: 'profile',
-        username: values.username,
-        maxItems: values.maxItems,
-        since: values.dateRange?.since,
-        until: values.dateRange?.until,
-        includeReplies: values.includeReplies
-      })
+      const usernames = Array.from(new Set([...values.username, ...csvProfiles]))
       
-      if (!response.success) {
-        setError(response.error)
+      if (usernames.length === 0) {
+        setError('Please provide at least one username')
         return
       }
 
-      setResults(response.data.posts)
+      const responses = await Promise.all(usernames.map(username => 
+        analyzeMetrics({
+          type: 'profile',
+          username,
+          maxItems: values.maxItems,
+          since: values.dateRange?.since,
+          until: values.dateRange?.until,
+          includeReplies: values.includeReplies
+        })
+      ))
+      
+      const errors = responses.filter(r => !r.success)
+      if (errors.length > 0) {
+        setError(`Error processing ${errors.length} profiles`)
+        return
+      }
+
+      const allPosts = responses.flatMap(r => r.data.posts)
+      setResults(allPosts)
       router.push('/results')
     } catch (error) {
-      console.error('Error analyzing profile:', error)
+      console.error('Error analyzing profiles:', error)
       setError('Error processing request')
     } finally {
       setIsLoading(false)
@@ -157,9 +201,33 @@ export function SearchMetricsForm() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Twitter Username</FormLabel>
+                  <FormLabel>Twitter Usernames (comma-separated)</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="e.g. elonmusk" />
+                    <Input {...field} placeholder="e.g. elonmusk, twitter, jack" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="csvFile"
+              render={({ field: { onChange, value, ...field } }) => (
+                <FormItem>
+                  <FormLabel>Upload CSV of usernames</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => {
+                          onChange(e)
+                          handleCsvUpload(e)
+                        }}
+                        {...field}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -211,12 +279,11 @@ export function SearchMetricsForm() {
               name="maxItems"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Number of tweets to analyze (max 200)</FormLabel>
+                  <FormLabel>Number of tweets to analyze per profile (max 200)</FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
                       type="number"
-                      min={1}
                       max={200}
                       onChange={e => field.onChange(parseInt(e.target.value) || undefined)}
                     />
@@ -258,10 +325,10 @@ export function SearchMetricsForm() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing Profile...
+                  Analyzing Profiles...
                 </>
               ) : (
-                'Analyze Profile'
+                'Analyze Profiles'
               )}
             </Button>
           </form>
