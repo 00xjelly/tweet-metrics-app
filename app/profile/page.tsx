@@ -1,3 +1,5 @@
+'use client';
+
 import React from "react";
 import { BarChart, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
