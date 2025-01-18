@@ -1,3 +1,5 @@
+'use client';
+
 import React from "react";
 import { BarChart, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -69,6 +71,7 @@ export default function ProfileMetricsPage() {
         </div>
       </div>
       <Separator className="my-4" />
+      <hr className="my-4 border-t border-border" />
       <div className="grid gap-4 grid-cols-2">
         <Card>
           <form onSubmit={handleSubmit}>
@@ -85,6 +88,7 @@ export default function ProfileMetricsPage() {
                   id="profiles"
                   name="profiles"
                   placeholder="e.g., elonmusk"
+                  placeholder="e.g., elonmusk, jackX"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   Enter multiple profiles separated by commas (e.g., elonmusk, jackX) or upload a CSV file
@@ -110,6 +114,14 @@ export default function ProfileMetricsPage() {
                   max={200}
                 />
                 <p className="text-sm text-muted-foreground mt-1">Maximum 200 tweets</p>
+                <input 
+                  type="number"
+                  id="count"
+                  name="count"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter number of tweets (max 200)"
+                  max={200}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="metric">Metric</Label>
