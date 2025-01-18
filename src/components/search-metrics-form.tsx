@@ -23,8 +23,8 @@ oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
 const profileFormSchema = z.object({
   username: z.string().min(1, "Please enter at least one username"),
-  mentionKeyword: z.string().optional(),
-  mentionUsername: z.string().optional(),
+  twitterContent: z.string().optional(),
+  "@": z.string().optional(),
   csvFile: z.any().optional(),
   maxItems: z.number().max(200).optional(),
   includeReplies: z.boolean().default(false),
@@ -47,8 +47,8 @@ export function SearchMetricsForm() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       username: "",
-      mentionKeyword: "",
-      mentionUsername: "",
+      twitterContent: "",
+      "@": "",
       maxItems: 50,
       includeReplies: false,
       dateRange: {
@@ -113,8 +113,8 @@ export function SearchMetricsForm() {
           since: values.dateRange?.since,
           until: values.dateRange?.until,
           includeReplies: values.includeReplies,
-          mentionKeyword: values.mentionKeyword || undefined,
-          mentionUsername: values.mentionUsername || undefined
+          twitterContent: values.twitterContent || undefined,
+          "@": values["@"] || undefined
         })
       ))
       
@@ -196,7 +196,7 @@ export function SearchMetricsForm() {
 
             <FormField
               control={profileForm.control}
-              name="mentionKeyword"
+              name="twitterContent"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Filter by Keyword</FormLabel>
@@ -210,7 +210,7 @@ export function SearchMetricsForm() {
 
             <FormField
               control={profileForm.control}
-              name="mentionUsername"
+              name="@"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Filter by Mentioned Username</FormLabel>
