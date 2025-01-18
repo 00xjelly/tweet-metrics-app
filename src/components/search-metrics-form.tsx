@@ -65,6 +65,10 @@ export function SearchMetricsForm() {
     },
   })
 
+  const isTwitterUrl = (url: string) => {
+    return /^https?:\/\/((?:x|twitter)\.com\/[^/]+(?:\/status\/\d+)?)/.test(url)
+  }
+
   const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -72,19 +76,22 @@ export function SearchMetricsForm() {
     const text = await file.text()
     Papa.parse(text, {
       complete: (results) => {
-        const profiles = results.data
+        const twitterUrls = results.data
           .flat()
-          .filter(Boolean)
           .map(String)
           .map(s => s.trim())
           .filter(s => s.length > 0)
-        
-        const currentUsername = profileForm.getValues().username
-        const uniqueUsernames = Array.from(new Set([currentUsername, ...profiles]))
-        const combined = uniqueUsernames
-          .filter(Boolean)
-          .join(', ')
-        profileForm.setValue('username', combined)
+          .filter(isTwitterUrl)
+
+        if (twitterUrls.length === 0) {
+          setError('No valid Twitter/X URLs found in the CSV')
+          return
+        }
+
+        // Update the urls field in post form if we're in post search tab
+        if (activeTab === 'post') {
+          postForm.setValue('urls', twitterUrls.join('\n'))
+        }
       },
       error: (error) => {
         setError('Error parsing CSV file')
