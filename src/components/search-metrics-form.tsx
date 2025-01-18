@@ -21,7 +21,7 @@ const postSearchSchema = z.object({
 const oneYearAgo = new Date()
 oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
-const profileSearchSchema = z.object({
+const profileFormSchema = z.object({
   username: z.string().min(1, "Please enter at least one username"),
   csvFile: z.any().optional(),
   maxItems: z.number().max(200).optional(),
@@ -30,12 +30,15 @@ const profileSearchSchema = z.object({
     since: z.string().optional(),
     until: z.string().optional()
   }).optional()
-}).transform((data) => ({
+})
+
+const profileSearchSchema = profileFormSchema.transform((data) => ({
   ...data,
   username: data.username.split(',').map(s => s.trim()).filter(Boolean)
 }))
 
-type ProfileFormType = z.infer<typeof profileSearchSchema>
+type ProfileFormType = z.infer<typeof profileFormSchema>
+type ProfileSearchType = z.infer<typeof profileSearchSchema>
 
 export function SearchMetricsForm() {
   const router = useRouter()
@@ -43,7 +46,6 @@ export function SearchMetricsForm() {
   const [activeTab, setActiveTab] = useState<"profile" | "post">("profile")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [csvProfiles, setCsvProfiles] = useState<string[]>([])
 
   const profileForm = useForm<ProfileFormType>({
     resolver: zodResolver(profileSearchSchema),
@@ -79,9 +81,8 @@ export function SearchMetricsForm() {
           .map(s => s.trim())
           .filter(s => s.length > 0)
         
-        setCsvProfiles(profiles)
-        const currentUsernames = profileForm.getValues().username
-        const combined = [...new Set([...currentUsernames.split(','), ...profiles])]
+        const currentUsername = profileForm.getValues().username
+        const combined = [...new Set([currentUsername, ...profiles])]
           .filter(Boolean)
           .join(', ')
         profileForm.setValue('username', combined)
@@ -98,7 +99,7 @@ export function SearchMetricsForm() {
     setError(null)
     
     try {
-      const usernames = values.username
+      const usernames = values.username.split(',').map(s => s.trim()).filter(Boolean)
       
       if (usernames.length === 0) {
         setError('Please provide at least one username')
