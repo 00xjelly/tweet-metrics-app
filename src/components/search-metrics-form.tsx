@@ -32,13 +32,7 @@ const profileFormSchema = z.object({
   }).optional()
 })
 
-const profileSearchSchema = profileFormSchema.transform((data) => ({
-  ...data,
-  username: data.username.split(',').map(s => s.trim()).filter(Boolean)
-}))
-
 type ProfileFormType = z.infer<typeof profileFormSchema>
-type ProfileSearchType = z.infer<typeof profileSearchSchema>
 
 export function SearchMetricsForm() {
   const router = useRouter()
@@ -48,7 +42,7 @@ export function SearchMetricsForm() {
   const [error, setError] = useState<string | null>(null)
 
   const profileForm = useForm<ProfileFormType>({
-    resolver: zodResolver(profileSearchSchema),
+    resolver: zodResolver(profileFormSchema),
     defaultValues: {
       username: "",
       maxItems: 50,
@@ -185,9 +179,9 @@ export function SearchMetricsForm() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Twitter Usernames (comma-separated)</FormLabel>
+                  <FormLabel>X Username</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="e.g. elonmusk, twitter, jack" />
+                    <Input {...field} placeholder="multiple profiles, separated by ," />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +193,7 @@ export function SearchMetricsForm() {
               name="csvFile"
               render={({ field: { onChange, value, ...field } }) => (
                 <FormItem>
-                  <FormLabel>Upload CSV of usernames</FormLabel>
+                  <FormLabel>CSV Upload</FormLabel>
                   <FormControl>
                     <div className="flex items-center gap-2">
                       <Input
