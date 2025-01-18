@@ -82,7 +82,8 @@ export function SearchMetricsForm() {
           .filter(s => s.length > 0)
         
         const currentUsername = profileForm.getValues().username
-        const combined = [...new Set([currentUsername, ...profiles])]
+        const uniqueUsernames = Array.from(new Set([currentUsername, ...profiles]))
+        const combined = uniqueUsernames
           .filter(Boolean)
           .join(', ')
         profileForm.setValue('username', combined)
