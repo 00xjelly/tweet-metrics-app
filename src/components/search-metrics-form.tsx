@@ -197,7 +197,96 @@ export function SearchMetricsForm() {
       <TabsContent value="profile" className="mt-4">
         <Form {...profileForm}>
           <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-            {/* Form fields remain the same */}
+            <FormField
+              control={profileForm.control}
+              name="@"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>X Username(s)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g. user1, user2" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mentioned User Filter</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Filter by mentioned user" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="maxItems"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Maximum Items</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      max={200} 
+                      {...field} 
+                      onChange={e => field.onChange(parseInt(e.target.value))} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="twitterContent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content Filter</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Filter by keywords or content" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Analyze Profiles
+                </>
+              )}
+            </Button>
           </form>
         </Form>
       </TabsContent>
@@ -205,7 +294,43 @@ export function SearchMetricsForm() {
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
           <form onSubmit={postForm.handleSubmit(onPostSubmit)} className="space-y-6">
-            {/* Form fields remain the same */}
+            <FormField
+              control={postForm.control}
+              name="urls"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Post URLs</FormLabel>
+                  <FormControl>
+                    <textarea 
+                      className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Enter URLs (one per line)" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Analyze Posts
+                </>
+              )}
+            </Button>
           </form>
         </Form>
       </TabsContent>
