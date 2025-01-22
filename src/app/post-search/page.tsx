@@ -30,9 +30,6 @@ export default function PostSearch() {
   const { setResults } = useMetrics();
   const [urls, setUrls] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [includeReplies, setIncludeReplies] = useState(false);
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +37,7 @@ export default function PostSearch() {
     if (!file) return;
 
     Papa.parse(file, {
+      skipEmptyLines: true,
       complete: (results) => {
         const urlList = results.data
           .flat()
@@ -90,18 +88,14 @@ export default function PostSearch() {
         throw new Error('No valid post URLs found');
       }
 
-      const response = await analyzeMetrics({
-        urls: validUrls,
-        since: startDate || undefined,
-        until: endDate || undefined,
-        includeReplies
-      });
-
-      if (!response.success) {
-        throw new Error(response.error);
+      // Process each URL individually
+      for (const url of validUrls) {
+        const response = await analyzeMetrics({ urls: [url] });
+        if (!response.success) {
+          throw new Error(`Failed to process URL ${url}: ${response.error}`);
+        }
       }
 
-      setResults(response.data.posts);
       router.push('/results');
 
     } catch (error) {
@@ -157,7 +151,7 @@ export default function PostSearch() {
                         </Button>
                       )}
                     </div>
-                    <div className="flex justify-end">
+                    <div className="flex justify-between items-center">
                       <Button variant="outline" size="sm" asChild>
                         <label className="cursor-pointer">
                           <Upload className="mr-2 h-4 w-4" />
