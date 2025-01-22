@@ -1,6 +1,38 @@
 import { NextResponse } from 'next/server'
 const BASE_API_URL = 'https://api.twitterapi.io/twitter'
 
+async function fetchAllTweets(apiUrl: URL, API_KEY: string, maxItems: number) {
+  let allTweets: any[] = [];
+  let cursor = "";
+  
+  while (allTweets.length < maxItems) {
+    if (cursor) {
+      apiUrl.searchParams.set('cursor', cursor);
+    }
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'x-api-key': API_KEY
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    if (!data.tweets?.length) break;
+
+    allTweets = [...allTweets, ...data.tweets];
+    
+    if (!data.has_next_page || !data.next_cursor) break;
+    cursor = data.next_cursor;
+  }
+
+  return allTweets.slice(0, maxItems);
+}
+
 export async function POST(request: Request) {
   const API_KEY = process.env.NEXT_PUBLIC_TWITTER_API_KEY
   if (!API_KEY) {
@@ -39,40 +71,23 @@ export async function POST(request: Request) {
       apiUrl.searchParams.set('query', urlQuery)
       apiUrl.searchParams.set('queryType', 'Latest')
 
-      const apiResponse = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'x-api-key': API_KEY
+      const tweets = await fetchAllTweets(apiUrl, API_KEY, maxItems);
+      
+      const transformedTweets = tweets.map((tweet: any) => ({
+        id: tweet.id,
+        text: tweet.text,
+        url: tweet.url,
+        author: tweet.author?.userName,
+        isReply: tweet.isReply,
+        isQuote: !!tweet.quoted_tweet,
+        createdAt: tweet.createdAt,
+        metrics: {
+          likes: tweet.likeCount || 0,
+          replies: tweet.replyCount || 0,
+          retweets: tweet.retweetCount || 0,
+          impressions: tweet.viewCount || 0
         }
-      })
-
-      if (!apiResponse.ok) {
-        const errorText = await apiResponse.text()
-        console.error('API Error:', errorText)
-        return NextResponse.json({
-          success: false,
-          error: `API error: ${errorText}`
-        }, { status: apiResponse.status })
-      }
-
-      const data = await apiResponse.json()
-      const transformedTweets = (data.tweets || [])
-        .slice(0, maxItems)
-        .map((tweet: any) => ({
-          id: tweet.id,
-          text: tweet.text,
-          url: tweet.url,
-          author: tweet.author?.userName,
-          isReply: tweet.isReply,
-          isQuote: !!tweet.quoted_tweet,
-          createdAt: tweet.createdAt,
-          metrics: {
-            likes: tweet.likeCount || 0,
-            replies: tweet.replyCount || 0,
-            retweets: tweet.retweetCount || 0,
-            impressions: tweet.viewCount || 0
-          }
-        }))
+      }))
 
       return NextResponse.json({
         success: true,
@@ -134,46 +149,23 @@ export async function POST(request: Request) {
     apiUrl.searchParams.set('query', finalQuery)
     apiUrl.searchParams.set('queryType', 'Latest')
 
-    console.log('=== Debug: API Request ===')
-    console.log('Request URL:', apiUrl.toString())
-
-    const apiResponse = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'x-api-key': API_KEY
+    const tweets = await fetchAllTweets(apiUrl, API_KEY, maxItems);
+    
+    const transformedTweets = tweets.map((tweet: any) => ({
+      id: tweet.id,
+      text: tweet.text,
+      url: tweet.url,
+      author: tweet.author?.userName,
+      isReply: tweet.isReply,
+      isQuote: !!tweet.quoted_tweet,
+      createdAt: tweet.createdAt,
+      metrics: {
+        likes: tweet.likeCount || 0,
+        replies: tweet.replyCount || 0,
+        retweets: tweet.retweetCount || 0,
+        impressions: tweet.viewCount || 0
       }
-    })
-
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text()
-      console.error('API Error:', errorText)
-      return NextResponse.json({
-        success: false,
-        error: `API error: ${errorText}`
-      }, { status: apiResponse.status })
-    }
-
-    const data = await apiResponse.json()
-    console.log('=== Debug: Raw API Response ===')
-    console.log('First tweet:', data.tweets?.[0])
-
-    const transformedTweets = (data.tweets || [])
-      .slice(0, maxItems)
-      .map((tweet: any) => ({
-        id: tweet.id,
-        text: tweet.text,
-        url: tweet.url,
-        author: tweet.author?.userName,
-        isReply: tweet.isReply,
-        isQuote: !!tweet.quoted_tweet,
-        createdAt: tweet.createdAt,
-        metrics: {
-          likes: tweet.likeCount || 0,
-          replies: tweet.replyCount || 0,
-          retweets: tweet.retweetCount || 0,
-          impressions: tweet.viewCount || 0
-        }
-      }))
+    }))
 
     return NextResponse.json({
       success: true,
