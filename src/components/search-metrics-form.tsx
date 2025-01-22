@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
+import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
 import { useState, useCallback, useMemo } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { analyzeMetrics } from "@/lib/api"
 import Papa from 'papaparse'
 
@@ -259,12 +258,14 @@ export function SearchMetricsForm() {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
-                    <Checkbox
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onChange={(e) => field.onChange(e.target.checked)}
                     />
                   </FormControl>
-                  <FormLabel>Include Replies</FormLabel>
+                  <FormLabel className="font-normal">Include Replies</FormLabel>
                 </FormItem>
               )}
             />
