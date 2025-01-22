@@ -47,7 +47,18 @@ export function SearchMetricsForm() {
   const [csvUrls, setCsvUrls] = useState<string[]>([])
 
   const isTwitterUrl = useCallback((url: string) => {
-    return /(^|\s|https?:\/\/)?(x\.com|twitter\.com)\/[\w-]+/.test(url)
+    try {
+      // Remove any whitespace and protocol
+      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
+      // Check if it's a twitter.com or x.com URL that's not a status
+      return (
+        (cleanUrl.startsWith('twitter.com/') || cleanUrl.startsWith('x.com/')) &&
+        !cleanUrl.includes('/status/') &&
+        cleanUrl.split('/').length === 2 // Only username after domain
+      );
+    } catch {
+      return false;
+    }
   }, [])
 
   const handleCsvUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,6 +225,38 @@ export function SearchMetricsForm() {
                 </FormItem>
               )}
             />
+
+            {/* CSV Upload */}
+            <FormField
+              control={profileForm.control}
+              name="csvFile"
+              render={({ field: { onChange, ...field } }) => (
+                <FormItem>
+                  <FormLabel>Upload CSV</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => {
+                          onChange(e.target.files?.[0]);
+                          handleCsvUpload(e);
+                        }}
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Show parsed URLs if any */}
+            {csvUrls.length > 0 && (
+              <div className="text-sm text-gray-600">
+                Found {csvUrls.length} valid Twitter/X profile URLs
+              </div>
+            )}
 
             <FormField
               control={profileForm.control}
