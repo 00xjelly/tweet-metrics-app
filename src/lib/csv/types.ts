@@ -1,19 +1,19 @@
-import type { TwitterUrl } from '../twitter/url-classifier';
+export interface ParseResult<T> {
+  data: T;
+  error?: string;
+}
 
-export interface CSVParseResult {
+export interface URLParseData {
+  urls: string[];
+}
+
+export interface URLProcessData {
   validUrls: string[];
-  invalidUrls: string[];
-  errors: string[];
-  stats: {
-    totalRows: number;
-    validCount: number;
-    invalidCount: number;
-    skippedCount: number;
-  };
+  invalidUrls: Array<{
+    url: string;
+    reason: string;
+  }>;
 }
 
-export interface CSVProcessResult extends CSVParseResult {
-  profiles: TwitterUrl[];
-  posts: TwitterUrl[];
-  classified: TwitterUrl[];
-}
+export type CSVParseResult = ParseResult<URLParseData>;
+export type CSVProcessResult = ParseResult<URLProcessData>;

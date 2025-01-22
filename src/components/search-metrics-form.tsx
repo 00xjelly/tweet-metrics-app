@@ -3,8 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, LinkIcon, User, Loader2, Upload } from 'lucide-react'
-import { useState } from "react"
+import { Search, LinkIcon, User, Loader2 } from 'lucide-react'
+import { useState, useCallback, useMemo } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
 import { Button } from "@/components/ui/button"
@@ -18,13 +18,10 @@ const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
 })
 
-const oneYearAgo = new Date()
-oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-
 const profileFormSchema = z.object({
-  username: z.string().optional(),
-  twitterContent: z.string().optional(),
   "@": z.string().optional(),
+  twitterContent: z.string().optional(),
+  username: z.string().optional(),
   csvFile: z.any().optional(),
   maxItems: z.number().max(200).optional(),
   includeReplies: z.boolean().default(false),
@@ -33,7 +30,7 @@ const profileFormSchema = z.object({
     until: z.string().optional()
   }).optional()
 }).refine((data) => {
-  return data.username || data.csvFile
+  return data['@'] || data.csvFile
 }, {
   message: "Please provide either usernames or a CSV file"
 })
@@ -43,38 +40,28 @@ type ProfileFormType = z.infer<typeof profileFormSchema>
 export function SearchMetricsForm() {
   const router = useRouter()
   const { setResults } = useMetrics()
+  
   const [activeTab, setActiveTab] = useState<"profile" | "post">("profile")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [csvUrls, setCsvUrls] = useState<string[]>([])
 
-  const profileForm = useForm<ProfileFormType>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      username: "",
-      twitterContent: "",
-      "@": "",
-      maxItems: 50,
-      includeReplies: false,
-      dateRange: {
-        since: undefined,
-        until: undefined
-      }
-    },
-  })
+  const isTwitterUrl = useCallback((url: string) => {
+    try {
+      // Remove any whitespace and protocol
+      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
+      // Check if it's a twitter.com or x.com URL that's not a status
+      return (
+        (cleanUrl.startsWith('twitter.com/') || cleanUrl.startsWith('x.com/')) &&
+        !cleanUrl.includes('/status/') &&
+        cleanUrl.split('/').length === 2 // Only username after domain
+      );
+    } catch {
+      return false;
+    }
+  }, [])
 
-  const postForm = useForm<z.infer<typeof postSearchSchema>>({
-    resolver: zodResolver(postSearchSchema),
-    defaultValues: {
-      urls: "",
-    },
-  })
-
-  const isTwitterUrl = (url: string) => {
-    return /(^|\s|https?:\/\/)?(x\.com|twitter\.com)\/[\w-]+/.test(url)
-  }
-
-  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -92,7 +79,7 @@ export function SearchMetricsForm() {
           setError('No valid Twitter/X URLs found in the CSV')
           return
         }
-
+        
         setCsvUrls(twitterUrls)
       },
       error: (error) => {
@@ -100,41 +87,36 @@ export function SearchMetricsForm() {
         console.error('CSV parsing error:', error)
       }
     })
-  }
+  }, [isTwitterUrl])
 
   async function onProfileSubmit(values: ProfileFormType) {
     setIsLoading(true)
     setError(null)
     
     try {
-      const usernames = [...(values.username?.split(',').map(s => s.trim()).filter(Boolean) || []), ...csvUrls]
+      const authors = [...(values['@']?.split(',').map(s => s.trim()).filter(Boolean) || []), ...csvUrls]
       
-      if (usernames.length === 0) {
+      if (authors.length === 0) {
         setError('Please provide at least one username')
         return
       }
 
-      const responses = await Promise.all(usernames.map(username => 
-        analyzeMetrics({
-          type: 'profile',
-          username,
-          maxItems: values.maxItems,
-          since: values.dateRange?.since,
-          until: values.dateRange?.until,
-          includeReplies: values.includeReplies,
-          twitterContent: values.twitterContent || undefined,
-          "@": values["@"] || undefined
-        })
-      ))
+      const response = await analyzeMetrics({
+        '@': authors,
+        username: values.username,
+        maxItems: values.maxItems,
+        since: values.dateRange?.since,
+        until: values.dateRange?.until,
+        includeReplies: values.includeReplies,
+        twitterContent: values.twitterContent || undefined
+      })
       
-      const errors = responses.filter(r => !r.success)
-      if (errors.length > 0) {
-        setError(`Error processing ${errors.length} profiles`)
+      if (!response.success) {
+        setError(response.error)
         return
       }
 
-      const allPosts = responses.flatMap(r => r.data.posts)
-      setResults(allPosts)
+      setResults(response.data.posts)
       router.push('/results')
     } catch (error) {
       console.error('Error analyzing profiles:', error)
@@ -154,7 +136,6 @@ export function SearchMetricsForm() {
         .filter(Boolean)
 
       const response = await analyzeMetrics({
-        type: 'post',
         urls
       })
       
@@ -172,6 +153,28 @@ export function SearchMetricsForm() {
       setIsLoading(false)
     }
   }
+
+  const profileForm = useForm<ProfileFormType>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: useMemo(() => ({
+      "@": "",
+      twitterContent: "",
+      username: "",
+      maxItems: 50,
+      includeReplies: false,
+      dateRange: {
+        since: undefined,
+        until: undefined
+      }
+    }), [])
+  })
+
+  const postForm = useForm<z.infer<typeof postSearchSchema>>({
+    resolver: zodResolver(postSearchSchema),
+    defaultValues: useMemo(() => ({
+      urls: "",
+    }), [])
+  })
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full max-w-2xl mx-auto">
@@ -191,12 +194,118 @@ export function SearchMetricsForm() {
           <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
             <FormField
               control={profileForm.control}
+              name="@"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>X Username(s)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g. user1, user2" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>X Username</FormLabel>
+                  <FormLabel>Mentioned User Filter</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="multiple profiles, separated by ," />
+                    <Input 
+                      placeholder="Filter by mentioned user" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* CSV Upload */}
+<FormField
+  control={profileForm.control}
+  name="csvFile"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Upload CSV</FormLabel>
+      <FormControl>
+        <div className="flex items-center gap-2">
+          <Input
+            type="file"
+            accept=".csv"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              field.onChange(file);
+              
+              if (file) {
+                try {
+                  const text = await file.text();
+                  Papa.parse(text, {
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                      const twitterUrls = results.data
+                        .flat()
+                        .map(String)
+                        .map(s => {
+                          // Extract username from URL or use as is
+                          const url = s.trim();
+                          const match = url.match(/(?:twitter\.com|x\.com)\/([^\/\s?]+)/i);
+                          return match ? match[1] : url;
+                        })
+                        .filter(Boolean);
+
+                      if (twitterUrls.length === 0) {
+                        setError('No valid Twitter/X usernames found in the CSV');
+                        return;
+                      }
+                      
+                      setCsvUrls(twitterUrls);
+                    },
+                    error: (error) => {
+                      setError('Error parsing CSV file');
+                      console.error('CSV parsing error:', error);
+                    }
+                  });
+                } catch (error) {
+                  setError('Error reading CSV file');
+                  console.error('CSV reading error:', error);
+                }
+              }
+            }}
+          />
+        </div>
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
+            {/* Show parsed URLs if any */}
+            {csvUrls.length > 0 && (
+              <div className="text-sm text-gray-600">
+                Found {csvUrls.length} valid Twitter/X profile URLs
+              </div>
+            )}
+
+            <FormField
+              control={profileForm.control}
+              name="maxItems"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Maximum Items</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      max={200} 
+                      {...field} 
+                      onChange={e => field.onChange(parseInt(e.target.value))} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -208,9 +317,12 @@ export function SearchMetricsForm() {
               name="twitterContent"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Filter by Keyword</FormLabel>
+                  <FormLabel>Content Filter</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="keyword or phrase to filter by" />
+                    <Input 
+                      placeholder="Filter by keywords or content" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -219,38 +331,18 @@ export function SearchMetricsForm() {
 
             <FormField
               control={profileForm.control}
-              name="@"
+              name="includeReplies"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Filter by Mentioned Username</FormLabel>
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                   <FormControl>
-                    <Input {...field} placeholder="username without @" />
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={profileForm.control}
-              name="csvFile"
-              render={({ field: { onChange, value, ...field } }) => (
-                <FormItem>
-                  <FormLabel>CSV Upload</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => {
-                          onChange(e)
-                          handleCsvUpload(e)
-                        }}
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
+                  <FormLabel className="font-normal">Include Replies</FormLabel>
                 </FormItem>
               )}
             />
@@ -261,13 +353,11 @@ export function SearchMetricsForm() {
                 name="dateRange.since"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>From Date</FormLabel>
+                    <FormLabel>Start Date</FormLabel>
                     <FormControl>
                       <Input 
                         type="date" 
-                        {...field}
-                        min={oneYearAgo.toISOString().split('T')[0]}
-                        max={new Date().toISOString().split('T')[0]}
+                        {...field} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -280,13 +370,11 @@ export function SearchMetricsForm() {
                 name="dateRange.until"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>To Date</FormLabel>
+                    <FormLabel>End Date</FormLabel>
                     <FormControl>
                       <Input 
                         type="date" 
-                        {...field}
-                        min={oneYearAgo.toISOString().split('T')[0]}
-                        max={new Date().toISOString().split('T')[0]}
+                        {...field} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -295,61 +383,23 @@ export function SearchMetricsForm() {
               />
             </div>
 
-            <FormField
-              control={profileForm.control}
-              name="maxItems"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Number of tweets to analyze per profile (max 200)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      type="number"
-                      max={200}
-                      onChange={e => field.onChange(parseInt(e.target.value) || undefined)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={profileForm.control}
-              name="includeReplies"
-              render={({ field }) => (
-                <FormItem className="flex items-center space-x-2">
-                  <FormControl>
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
-                      checked={field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm cursor-pointer">
-                    Include Replies
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                {error}
+              </div>
             )}
 
-            <Button 
-              type="submit" 
-              disabled={isLoading} 
-              className="w-full"
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing Profiles...
+                  Processing...
                 </>
               ) : (
-                'Analyze Profiles'
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Analyze Profiles
+                </>
               )}
             </Button>
           </form>
@@ -366,10 +416,10 @@ export function SearchMetricsForm() {
                 <FormItem>
                   <FormLabel>Post URLs</FormLabel>
                   <FormControl>
-                    <Input 
+                    <textarea 
+                      className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Enter URLs (one per line)" 
                       {...field} 
-                      placeholder="twitter.com/username/status/123456789"
-                      type="text"
                     />
                   </FormControl>
                   <FormMessage />
@@ -378,21 +428,22 @@ export function SearchMetricsForm() {
             />
 
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                {error}
+              </div>
             )}
 
-            <Button 
-              type="submit" 
-              disabled={isLoading} 
-              className="w-full"
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
+                  Processing...
                 </>
               ) : (
-                'Analyze Posts'
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Analyze Posts
+                </>
               )}
             </Button>
           </form>
