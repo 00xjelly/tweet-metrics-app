@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Upload, X, Loader2 } from 'lucide-react';
+import { Search, Upload, X, Loader2, User, Link } from 'lucide-react';
 import Papa from 'papaparse';
 import { analyzeMetrics } from '@/lib/api';
 import { useMetrics } from '@/context/metrics-context';
@@ -125,46 +125,17 @@ export default function PostSearch() {
         <CardContent>
           <Tabs defaultValue="post" className="w-full">
             <TabsList className="w-full">
-              <TabsTrigger value="profile" className="w-1/2">Profile Search</TabsTrigger>
-              <TabsTrigger value="post" className="w-1/2">Post Search</TabsTrigger>
+              <TabsTrigger value="profile" className="w-1/2 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Profile Search
+              </TabsTrigger>
+              <TabsTrigger value="post" className="w-1/2 flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                Post Search
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="post" className="mt-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="grid grid-cols-2 gap-4 flex-1">
-                    <div>
-                      <label htmlFor="startDate" className="text-sm font-medium block mb-1">Start Date</label>
-                      <input
-                        type="date"
-                        id="startDate"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full p-2 rounded border"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="endDate" className="text-sm font-medium block mb-1">End Date</label>
-                      <input
-                        type="date"
-                        id="endDate"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full p-2 rounded border"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <input
-                      type="checkbox"
-                      id="replies"
-                      checked={includeReplies}
-                      onChange={(e) => setIncludeReplies(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="replies" className="text-sm">Include Replies</label>
-                  </div>
-                </div>
-                
                 <div>
                   <h3 className="text-lg font-medium mb-2">Post URLs</h3>
                   <div className="space-y-2">
@@ -212,7 +183,7 @@ export default function PostSearch() {
                 <Button
                   onClick={handleAnalyze}
                   disabled={isLoading}
-                  className="w-full"
+                  className="w-full bg-[#0F172A] text-white hover:bg-[#1E293B]"
                 >
                   {isLoading ? (
                     <>
