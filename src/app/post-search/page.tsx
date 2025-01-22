@@ -6,8 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Upload } from 'lucide-react';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { addDays } from 'date-fns';
 import Papa from 'papaparse';
 
 const isValidPostUrl = (url: string): boolean => {
@@ -28,10 +26,8 @@ export default function PostSearch() {
   const [urls, setUrls] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [includeReplies, setIncludeReplies] = useState(false);
-  const [date, setDate] = useState({
-    from: new Date(),
-    to: addDays(new Date(), 7),
-  });
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -71,7 +67,7 @@ export default function PostSearch() {
       for (const url of validUrls) {
         // API call will be implemented here
         console.log('Processing URL:', url, 'with replies:', includeReplies);
-        console.log('Date range:', date.from, 'to', date.to);
+        console.log('Date range:', startDate, 'to', endDate);
       }
 
     } catch (error) {
@@ -99,9 +95,30 @@ export default function PostSearch() {
             </TabsList>
             <TabsContent value="post" className="mt-4">
               <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <DatePickerWithRange date={date} setDate={setDate} />
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-4">
+                  <div className="grid grid-cols-2 gap-4 flex-1">
+                    <div>
+                      <label htmlFor="startDate" className="text-sm font-medium block mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        id="startDate"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full p-2 rounded border"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="endDate" className="text-sm font-medium block mb-1">End Date</label>
+                      <input
+                        type="date"
+                        id="endDate"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full p-2 rounded border"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-4">
                     <input
                       type="checkbox"
                       id="replies"
