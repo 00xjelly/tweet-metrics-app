@@ -33,6 +33,32 @@ async function fetchAllTweets(apiUrl: URL, API_KEY: string, maxItems: number) {
   return allTweets.slice(0, maxItems);
 }
 
+async function fetchUserTweets(author: string, API_KEY: string, maxItems: number, config: any) {
+  const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`);
+  const query = [`from:${author}`];
+
+  if (!config.includeReplies) {
+    query.push('-filter:replies');
+  }
+  if (config.twitterContent?.trim()) {
+    query.push(config.twitterContent.trim());
+  }
+  if (config.username) {
+    query.push(`@${config.username.trim().replace(/^@/, '')}`);
+  }
+  if (config.since) {
+    query.push(`since:${config.since}`);
+  }
+  if (config.until) {
+    query.push(`until:${config.until}`);
+  }
+
+  apiUrl.searchParams.set('query', query.join(' '));
+  apiUrl.searchParams.set('queryType', 'Latest');
+
+  return fetchAllTweets(apiUrl, API_KEY, maxItems);
+}
+
 export async function POST(request: Request) {
   const API_KEY = process.env.NEXT_PUBLIC_TWITTER_API_KEY
   if (!API_KEY) {
@@ -45,8 +71,8 @@ export async function POST(request: Request) {
   
   try {
     const body = await request.json()
-    console.log('=== Debug: Request Body ===')
-    console.log(JSON.stringify(body, null, 2))
+    console.log('=== Debug: Request Body ===');
+    console.log(JSON.stringify(body, null, 2));
     
     const { 
       '@': author,           // Authors from X Username field
@@ -106,52 +132,23 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Build the query
-    let query = []
+    // Fetch tweets for each author separately
+    const itemsPerAuthor = Math.ceil(maxItems / cleanAuthors.length);
     
-    // Author filter - support multiple authors with OR condition
-    if (cleanAuthors.length > 1) {
-      query.push(`(${cleanAuthors.map(a => `from:${a}`).join(' OR ')})`)
-    } else {
-      query.push(`from:${cleanAuthors[0]}`)
-    }
+    const tweetsPromises = cleanAuthors.map(author => 
+      fetchUserTweets(author, API_KEY, itemsPerAuthor, {
+        username,
+        twitterContent,
+        includeReplies,
+        since,
+        until
+      })
+    );
 
-    // Add mention filter if provided
-    if (username) {
-      const cleanMention = username.trim().replace(/^@/, '')
-      query.push(`@${cleanMention}`)
-    }
+    const authorTweets = await Promise.all(tweetsPromises);
+    const allTweets = authorTweets.flat();
 
-    // Add keyword filter if provided
-    if (twitterContent?.trim()) {
-      query.push(twitterContent.trim())
-    }
-
-    // Add date range if provided
-    if (since) {
-      query.push(`since:${since}`)
-    }
-    if (until) {
-      query.push(`until:${until}`)
-    }
-
-    // Add reply filter
-    if (!includeReplies) {
-      query.push('-filter:replies')
-    }
-
-    const finalQuery = query.join(' ')
-    console.log('=== Debug: Query Construction ===')
-    console.log('Query parts:', query)
-    console.log('Final query:', finalQuery)
-
-    const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`)
-    apiUrl.searchParams.set('query', finalQuery)
-    apiUrl.searchParams.set('queryType', 'Latest')
-
-    const tweets = await fetchAllTweets(apiUrl, API_KEY, maxItems);
-    
-    const transformedTweets = tweets.map((tweet: any) => ({
+    const transformedTweets = allTweets.map((tweet: any) => ({
       id: tweet.id,
       text: tweet.text,
       url: tweet.url,
@@ -165,7 +162,7 @@ export async function POST(request: Request) {
         retweets: tweet.retweetCount || 0,
         impressions: tweet.viewCount || 0
       }
-    }))
+    }));
 
     return NextResponse.json({
       success: true,
@@ -174,8 +171,8 @@ export async function POST(request: Request) {
       }
     })
   } catch (error) {
-    console.error('=== Error ===')
-    console.error('Error details:', error)
+    console.error('=== Error ===');
+    console.error('Error details:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'An unexpected error occurred'
