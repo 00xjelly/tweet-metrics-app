@@ -132,11 +132,9 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Fetch tweets for each author separately
-    const itemsPerAuthor = Math.ceil(maxItems / cleanAuthors.length);
-    
+    // Fetch tweets for each author separately - use full maxItems for each
     const tweetsPromises = cleanAuthors.map(author => 
-      fetchUserTweets(author, API_KEY, itemsPerAuthor, {
+      fetchUserTweets(author, API_KEY, maxItems, {
         username,
         twitterContent,
         includeReplies,
