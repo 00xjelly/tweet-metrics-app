@@ -30,6 +30,9 @@ export default function PostSearch() {
   const { setResults } = useMetrics();
   const [urls, setUrls] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [includeReplies, setIncludeReplies] = useState(false);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +93,13 @@ export default function PostSearch() {
 
       // Process each URL individually
       for (const url of validUrls) {
-        const response = await analyzeMetrics({ urls: [url] });
+        const response = await analyzeMetrics({
+          urls: [url],
+          since: startDate || undefined,
+          until: endDate || undefined,
+          includeReplies
+        });
+        
         if (!response.success) {
           throw new Error(`Failed to process URL ${url}: ${response.error}`);
         }
@@ -130,6 +139,40 @@ export default function PostSearch() {
             </TabsList>
             <TabsContent value="post" className="mt-4">
               <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="startDate" className="text-sm font-medium block mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      id="startDate"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full p-2 rounded border"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="endDate" className="text-sm font-medium block mb-1">End Date</label>
+                    <input
+                      type="date"
+                      id="endDate"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full p-2 rounded border"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="includeReplies"
+                    checked={includeReplies}
+                    onChange={(e) => setIncludeReplies(e.target.checked)}
+                    className="h-4 w-4 mt-1 rounded border-gray-300"
+                  />
+                  <label htmlFor="includeReplies" className="text-sm font-normal">Include Replies</label>
+                </div>
+
                 <div>
                   <h3 className="text-lg font-medium mb-2">Post URLs</h3>
                   <div className="space-y-2">
