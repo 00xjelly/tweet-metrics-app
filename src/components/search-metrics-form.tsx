@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { analyzeMetrics } from "@/lib/api"
 import Papa from 'papaparse'
 
@@ -251,6 +252,58 @@ export function SearchMetricsForm() {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={profileForm.control}
+              name="includeReplies"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel>Include Replies</FormLabel>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={profileForm.control}
+                name="dateRange.since"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={profileForm.control}
+                name="dateRange.until"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
