@@ -227,29 +227,63 @@ export function SearchMetricsForm() {
             />
 
             {/* CSV Upload */}
-            <FormField
-              control={profileForm.control}
-              name="csvFile"
-              render={({ field: { onChange, ...field } }) => (
-                <FormItem>
-                  <FormLabel>Upload CSV</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => {
-                          onChange(e.target.files?.[0]);
-                          handleCsvUpload(e);
-                        }}
-                        {...field}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+<FormField
+  control={profileForm.control}
+  name="csvFile"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Upload CSV</FormLabel>
+      <FormControl>
+        <div className="flex items-center gap-2">
+          <Input
+            type="file"
+            accept=".csv"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              field.onChange(file);
+              
+              if (file) {
+                try {
+                  const text = await file.text();
+                  Papa.parse(text, {
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                      const twitterUrls = results.data
+                        .flat()
+                        .map(String)
+                        .map(s => {
+                          // Extract username from URL or use as is
+                          const url = s.trim();
+                          const match = url.match(/(?:twitter\.com|x\.com)\/([^\/\s?]+)/i);
+                          return match ? match[1] : url;
+                        })
+                        .filter(Boolean);
+
+                      if (twitterUrls.length === 0) {
+                        setError('No valid Twitter/X usernames found in the CSV');
+                        return;
+                      }
+                      
+                      setCsvUrls(twitterUrls);
+                    },
+                    error: (error) => {
+                      setError('Error parsing CSV file');
+                      console.error('CSV parsing error:', error);
+                    }
+                  });
+                } catch (error) {
+                  setError('Error reading CSV file');
+                  console.error('CSV reading error:', error);
+                }
+              }
+            }}
+          />
+        </div>
+      </FormControl>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
 
             {/* Show parsed URLs if any */}
             {csvUrls.length > 0 && (
