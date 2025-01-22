@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { StreamingTextResponse } from 'next/streaming'
 
 const BASE_API_URL = 'https://api.twitterapi.io/twitter'
 
@@ -79,7 +78,6 @@ async function* fetchUserTweets(author: string, API_KEY: string, maxItems: numbe
 export async function POST(request: Request) {
   const API_KEY = process.env.NEXT_PUBLIC_TWITTER_API_KEY
   if (!API_KEY) {
-    console.error('API key missing')
     return NextResponse.json({
       success: false,
       error: 'API key not configured'
@@ -88,9 +86,6 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    console.log('=== Debug: Request Body ===');
-    console.log(JSON.stringify(body, null, 2));
-
     const { 
       '@': author,
       username,
@@ -101,10 +96,6 @@ export async function POST(request: Request) {
       until,
       urls
     } = body
-
-    const encoder = new TextEncoder();
-    const stream = new TransformStream();
-    const writer = stream.writable.getWriter();
 
     // Handle URL-based search
     if (urls && urls.length > 0) {
@@ -140,12 +131,10 @@ export async function POST(request: Request) {
         }
       }));
 
-      await writer.write(encoder.encode(JSON.stringify({
+      return NextResponse.json({
         success: true,
         data: { posts: tweets }
-      })));
-      await writer.close();
-      return new StreamingTextResponse(stream.readable);
+      });
     }
 
     // Handle multiple authors or single author
@@ -163,7 +152,7 @@ export async function POST(request: Request) {
 
     const allTweets: any[] = [];
     
-    // Process each author
+    // Process each author sequentially
     for (const authorName of cleanAuthors) {
       try {
         for await (const tweet of fetchUserTweets(authorName, API_KEY, maxItems, {
@@ -174,40 +163,20 @@ export async function POST(request: Request) {
           until
         })) {
           allTweets.push(tweet);
-          
-          // Stream the tweet immediately
-          await writer.write(encoder.encode(JSON.stringify({
-            success: true,
-            data: { posts: [tweet] },
-            isPartial: true,
-            author: authorName
-          }) + '\n'));
         }
       } catch (error) {
         console.error(`Error fetching tweets for ${authorName}:`, error);
-        // Stream the error but continue with other authors
-        await writer.write(encoder.encode(JSON.stringify({
-          success: false,
-          error: `Error fetching tweets for ${authorName}`,
-          isPartial: true,
-          author: authorName
-        }) + '\n'));
+        // Continue with other authors if one fails
       }
     }
 
-    // Send final message
-    await writer.write(encoder.encode(JSON.stringify({
+    return NextResponse.json({
       success: true,
-      data: { posts: allTweets },
-      isComplete: true
-    })));
-    await writer.close();
-
-    return new StreamingTextResponse(stream.readable);
+      data: { posts: allTweets }
+    });
 
   } catch (error) {
-    console.error('=== Error ===');
-    console.error('Error details:', error);
+    console.error('Error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'An unexpected error occurred'
