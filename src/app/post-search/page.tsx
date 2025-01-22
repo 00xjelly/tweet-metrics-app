@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Upload } from 'lucide-react';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { addDays } from 'date-fns';
 import Papa from 'papaparse';
 
@@ -104,12 +102,14 @@ export default function PostSearch() {
                 <div className="flex items-center space-x-4">
                   <DatePickerWithRange date={date} setDate={setDate} />
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="replies" 
+                    <input
+                      type="checkbox"
+                      id="replies"
                       checked={includeReplies}
-                      onCheckedChange={(checked) => setIncludeReplies(checked as boolean)}
+                      onChange={(e) => setIncludeReplies(e.target.checked)}
+                      className="h-4 w-4"
                     />
-                    <Label htmlFor="replies">Include Replies</Label>
+                    <label htmlFor="replies" className="text-sm">Include Replies</label>
                   </div>
                 </div>
                 
