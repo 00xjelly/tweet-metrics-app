@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 
 const BASE_API_URL = 'https://api.twitterapi.io/twitter'
-const BATCH_SIZE = 2
-const BATCH_DELAY = 2000 // 2 second delay between batches
 
 async function* fetchUserTweets(author: string, API_KEY: string, maxItems: number, config: any) {
   const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`);
@@ -76,19 +74,15 @@ async function* fetchUserTweets(author: string, API_KEY: string, maxItems: numbe
   }
 }
 
-async function processBatch(authors: string[], API_KEY: string, config: any) {
+async function processUser(author: string, API_KEY: string, config: any) {
   const tweets: any[] = [];
-  await Promise.all(
-    authors.map(async (author) => {
-      try {
-        for await (const tweet of fetchUserTweets(author, API_KEY, config.maxItems, config)) {
-          tweets.push(tweet);
-        }
-      } catch (error) {
-        console.error(`Error fetching tweets for ${author}:`, error);
-      }
-    })
-  );
+  try {
+    for await (const tweet of fetchUserTweets(author, API_KEY, config.maxItems, config)) {
+      tweets.push(tweet);
+    }
+  } catch (error) {
+    console.error(`Error fetching tweets for ${author}:`, error);
+  }
   return tweets;
 }
 
@@ -114,7 +108,6 @@ export async function POST(request: Request) {
       urls
     } = body
 
-    // Handle URL-based search
     if (urls && urls.length > 0) {
       const urlQuery = urls.map(url => `url:${url}`).join(' OR ')
       const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`)
@@ -165,11 +158,6 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    const batches = [];
-    for (let i = 0; i < cleanAuthors.length; i += BATCH_SIZE) {
-      batches.push(cleanAuthors.slice(i, i + BATCH_SIZE));
-    }
-
     const config = {
       username,
       maxItems,
@@ -179,14 +167,13 @@ export async function POST(request: Request) {
       until
     };
 
-    const allTweets = [];
-    for (const batch of batches) {
-      const batchTweets = await processBatch(batch, API_KEY, config);
-      allTweets.push(...batchTweets);
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      }
-    }
+    // Process all users concurrently
+    const userPromises = cleanAuthors.map(author => 
+      processUser(author, API_KEY, config)
+    );
+    
+    const results = await Promise.all(userPromises);
+    const allTweets = results.flat();
 
     return NextResponse.json({
       success: true,
