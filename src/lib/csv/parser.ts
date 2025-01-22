@@ -27,8 +27,8 @@ export function parseCSVContent(content: string): CSVParseResult {
 
     if (result.errors.length > 0) {
       return {
-        success: false,
-        error: `CSV parsing failed: ${result.errors[0].message}`
+        error: `CSV parsing failed: ${result.errors[0].message}`,
+        data: { urls: [] }
       };
     }
 
@@ -39,13 +39,12 @@ export function parseCSVContent(content: string): CSVParseResult {
       .filter(Boolean);
 
     return {
-      success: true,
       data: { urls }
     };
   } catch (error) {
     return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to parse CSV'
+      error: error instanceof Error ? error.message : 'Failed to parse CSV',
+      data: { urls: [] }
     };
   }
 }
@@ -67,7 +66,6 @@ export function processCSVUrls(urls: string[]): CSVProcessResult {
   });
 
   return {
-    success: true,
     data: {
       validUrls,
       invalidUrls
