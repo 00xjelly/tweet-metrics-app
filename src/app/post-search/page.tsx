@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search } from 'lucide-react';
+import { Search, Upload } from 'lucide-react';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { addDays } from 'date-fns';
+import Papa from 'papaparse';
 
 const isValidPostUrl = (url: string): boolean => {
   try {
@@ -25,6 +30,30 @@ export default function PostSearch() {
   const [urls, setUrls] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [includeReplies, setIncludeReplies] = useState(false);
+  const [date, setDate] = useState({
+    from: new Date(),
+    to: addDays(new Date(), 7),
+  });
+
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      complete: (results) => {
+        const urlList = results.data
+          .flat()
+          .filter(Boolean)
+          .map(String)
+          .filter(isValidPostUrl);
+
+        setUrls(urlList.join('\n'));
+      },
+      error: (error) => {
+        console.error('Error parsing CSV:', error);
+      },
+    });
+  };
 
   const handleAnalyze = async () => {
     setIsLoading(true);
@@ -43,7 +72,8 @@ export default function PostSearch() {
       // Process each URL individually
       for (const url of validUrls) {
         // API call will be implemented here
-        console.log('Processing URL:', url);
+        console.log('Processing URL:', url, 'with replies:', includeReplies);
+        console.log('Date range:', date.from, 'to', date.to);
       }
 
     } catch (error) {
@@ -71,15 +101,44 @@ export default function PostSearch() {
             </TabsList>
             <TabsContent value="post" className="mt-4">
               <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <DatePickerWithRange date={date} setDate={setDate} />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="replies" 
+                      checked={includeReplies}
+                      onCheckedChange={(checked) => setIncludeReplies(checked as boolean)}
+                    />
+                    <Label htmlFor="replies">Include Replies</Label>
+                  </div>
+                </div>
+                
                 <div>
                   <h3 className="text-lg font-medium mb-2">Post URLs</h3>
-                  <Textarea
-                    placeholder="Enter URLs (one per line)"
-                    value={urls}
-                    onChange={(e) => setUrls(e.target.value)}
-                    className="min-h-[100px]"
-                  />
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Enter URLs (one per line)"
+                      value={urls}
+                      onChange={(e) => setUrls(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end">
+                      <Button variant="outline" size="sm" asChild>
+                        <label>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload CSV
+                          <input
+                            type="file"
+                            accept=".csv"
+                            className="hidden"
+                            onChange={handleCsvUpload}
+                          />
+                        </label>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
+
                 <Button
                   onClick={handleAnalyze}
                   disabled={isLoading}
