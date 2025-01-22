@@ -15,8 +15,8 @@ export type Tweet = {
 }
 
 export type MetricsParams = {
-  '@'?: string | string[]        // Author(s) from X Username field
-  username?: string | string[]   // Mentioned user filter
+  '@'?: string | string[]
+  username?: string | string[]
   maxItems?: number
   urls?: string[]
   since?: string
@@ -25,19 +25,27 @@ export type MetricsParams = {
   twitterContent?: string
 }
 
-export async function analyzeMetrics(params: MetricsParams) {
+export type StreamCallback = {
+  onTweet?: (tweet: Tweet, author: string) => void
+  onError?: (error: string, author?: string) => void
+  onComplete?: (allTweets: Tweet[]) => void
+}
+
+export async function analyzeMetrics(
+  params: MetricsParams,
+  callbacks?: StreamCallback
+) {
   console.log('Analyzing metrics with params:', params)
 
   try {
-    // Send all params directly to the API
     const response = await fetch('/api/twitter', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        '@': params['@'],            // Can be string or string[]
-        username: params.username,    // Mentioned user filter
+        '@': params['@'],
+        username: params.username,
         maxItems: params.maxItems,
         since: params.since,
         until: params.until,
@@ -53,23 +61,71 @@ export async function analyzeMetrics(params: MetricsParams) {
       throw new Error(`API request failed: ${errorText}`)
     }
 
+    // Handle streaming response
+    if (response.headers.get('content-type')?.includes('text/event-stream')) {
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      const allTweets: Tweet[] = []
+
+      if (!reader) throw new Error('No reader available')
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n').filter(Boolean)
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line)
+
+            if (!data.success) {
+              callbacks?.onError?.(data.error, data.author)
+              continue
+            }
+
+            if (data.isPartial) {
+              // Handle individual tweet update
+              const tweet = data.data.posts[0]
+              allTweets.push(tweet)
+              callbacks?.onTweet?.(tweet, data.author)
+            } else if (data.isComplete) {
+              callbacks?.onComplete?.(allTweets)
+              return {
+                success: true,
+                data: {
+                  posts: allTweets
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing stream chunk:', error)
+          }
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          posts: allTweets
+        }
+      }
+    }
+
+    // Handle regular JSON response (for URL searches)
     const result = await response.json()
 
     if (!result.success) {
       throw new Error(result.error || 'Unknown error occurred')
     }
 
-    return {
-      success: true,
-      data: result.data
-    }
+    return result
   } catch (error) {
     console.error('Error analyzing metrics:', error)
     return {
       success: false,
-      error: error instanceof Error 
-        ? error.message 
-        : 'Failed to analyze metrics'
+      error: error instanceof Error ? error.message : 'Failed to analyze metrics'
     }
   }
 }
