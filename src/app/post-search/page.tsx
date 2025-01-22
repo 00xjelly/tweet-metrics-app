@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Upload } from 'lucide-react';
+import { Search, Upload, X, Loader2 } from 'lucide-react';
 import Papa from 'papaparse';
+import { analyzeMetrics } from '@/lib/api';
+import { useMetrics } from '@/context/metrics-context';
+import { useRouter } from 'next/navigation';
 
 const isValidPostUrl = (url: string): boolean => {
   try {
@@ -23,11 +26,14 @@ const isValidPostUrl = (url: string): boolean => {
 };
 
 export default function PostSearch() {
+  const router = useRouter();
+  const { setResults } = useMetrics();
   const [urls, setUrls] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [includeReplies, setIncludeReplies] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -39,18 +45,39 @@ export default function PostSearch() {
           .flat()
           .filter(Boolean)
           .map(String)
+          .map(url => url.trim())
+          .filter(url => url.length > 0)
           .filter(isValidPostUrl);
 
+        if (urlList.length === 0) {
+          setError('No valid post URLs found in the CSV');
+          return;
+        }
+
         setUrls(urlList.join('\n'));
+        setError(null);
+        
+        // Reset file input
+        if (event.target) {
+          event.target.value = '';
+        }
       },
       error: (error) => {
         console.error('Error parsing CSV:', error);
+        setError('Error parsing CSV file');
       },
     });
   };
 
+  const clearUrls = () => {
+    setUrls('');
+    setError(null);
+  };
+
   const handleAnalyze = async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
       const urlList = urls
         .split('\n')
@@ -63,15 +90,23 @@ export default function PostSearch() {
         throw new Error('No valid post URLs found');
       }
 
-      // Process each URL individually
-      for (const url of validUrls) {
-        // API call will be implemented here
-        console.log('Processing URL:', url, 'with replies:', includeReplies);
-        console.log('Date range:', startDate, 'to', endDate);
+      const response = await analyzeMetrics({
+        urls: validUrls,
+        since: startDate || undefined,
+        until: endDate || undefined,
+        includeReplies
+      });
+
+      if (!response.success) {
+        throw new Error(response.error);
       }
+
+      setResults(response.data.posts);
+      router.push('/results');
 
     } catch (error) {
       console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -133,15 +168,27 @@ export default function PostSearch() {
                 <div>
                   <h3 className="text-lg font-medium mb-2">Post URLs</h3>
                   <div className="space-y-2">
-                    <Textarea
-                      placeholder="Enter URLs (one per line)"
-                      value={urls}
-                      onChange={(e) => setUrls(e.target.value)}
-                      className="min-h-[100px]"
-                    />
+                    <div className="relative">
+                      <Textarea
+                        placeholder="Enter URLs (one per line)"
+                        value={urls}
+                        onChange={(e) => setUrls(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      {urls && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={clearUrls}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <div className="flex justify-end">
                       <Button variant="outline" size="sm" asChild>
-                        <label>
+                        <label className="cursor-pointer">
                           <Upload className="mr-2 h-4 w-4" />
                           Upload CSV
                           <input
@@ -156,13 +203,28 @@ export default function PostSearch() {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                    {error}
+                  </div>
+                )}
+
                 <Button
                   onClick={handleAnalyze}
                   disabled={isLoading}
                   className="w-full"
                 >
-                  <Search className="mr-2 h-4 w-4" />
-                  Analyze Posts
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Analyze Posts
+                    </>
+                  )}
                 </Button>
               </div>
             </TabsContent>
