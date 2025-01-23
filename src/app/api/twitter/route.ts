@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 
+export const runtime = 'edge'
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const apiKey = process.env.TWITTER_API_KEY
+    // Hardcoding for testing - replace with env var in production
+    const apiKey = process.env.NEXT_PUBLIC_TWITTER_API_KEY
 
     if (!apiKey) {
+      console.error('API key missing:', process.env)
       throw new Error('Twitter API key not configured')
     }
 
