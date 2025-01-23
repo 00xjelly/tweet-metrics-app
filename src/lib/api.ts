@@ -40,34 +40,24 @@ export type MetricsParams = {
 }
 
 export async function analyzeMetrics(params: MetricsParams) {
-  console.log('Analyzing metrics with params:', params)
-
   try {
     if (params.tweet_ids) {
-      const url = new URL('/twitter/tweets', window.location.origin)
-      url.searchParams.append('tweet_ids', params.tweet_ids.join(','))
-      
-      const response = await fetch(url.toString(), {
+      const response = await fetch('https://api.twitterapi.io/twitter/tweets?tweet_ids=' + params.tweet_ids.join(','), {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'X-API-Key': process.env.TWITTER_API_KEY || ''
         }
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('API Response Error:', errorText)
         throw new Error(`API request failed: ${errorText}`)
       }
 
       const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error || 'Unknown error occurred')
-      }
-
       return result
     } else {
+      // Profile search endpoint remains unchanged
       const response = await fetch('/api/twitter', {
         method: 'POST',
         headers: {
@@ -78,16 +68,10 @@ export async function analyzeMetrics(params: MetricsParams) {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('API Response Error:', errorText)
         throw new Error(`API request failed: ${errorText}`)
       }
 
       const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.error || 'Unknown error occurred')
-      }
-
       return result
     }
   } catch (error) {
