@@ -103,8 +103,7 @@ export function SearchMetricsForm() {
       }
     })
   }, [isTwitterUrl])
-
-  const handlePostCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+const handlePostCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -137,6 +136,7 @@ export function SearchMetricsForm() {
       },
     });
   };
+
   async function onProfileSubmit(values: ProfileFormType) {
     setIsLoading(true)
     setError(null)
@@ -212,8 +212,7 @@ export function SearchMetricsForm() {
       setIsLoading(false)
     }
   }
-
-  const profileForm = useForm<ProfileFormType>({
+const profileForm = useForm<ProfileFormType>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: useMemo(() => ({
       "@": "",
@@ -249,8 +248,6 @@ export function SearchMetricsForm() {
           Post Search
         </TabsTrigger>
       </TabsList>
-
-      {/* Profile tab content remains exactly the same */}
 
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
@@ -364,4 +361,4 @@ export function SearchMetricsForm() {
       </TabsContent>
     </Tabs>
   )
-}
+}  
