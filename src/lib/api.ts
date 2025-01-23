@@ -12,16 +12,27 @@ export type Tweet = {
     retweets: number
     impressions: number
   }
+  bookmarkCount?: number
+  conversationId?: string
+  entities?: object
+  inReplyToId?: string
+  inReplyToUserId?: string
+  inReplyToUsername?: string
+  lang?: string
+  quoteCount?: number
+  quoted_tweet?: object
+  retweetCount?: number
+  retweeted_tweet?: object
+  source?: string
+  type?: 'tweet'
+  viewCount?: number
 }
 
 export type MetricsParams = {
   '@'?: string | string[]
   username?: string | string[]
   maxItems?: number
-  urls?: string[]
   tweet_ids?: string[]
-  tweets?: string[]
-  page?: number
   since?: string
   until?: string
   includeReplies?: boolean
@@ -32,23 +43,15 @@ export async function analyzeMetrics(params: MetricsParams) {
   console.log('Analyzing metrics with params:', params)
 
   try {
-    const response = await fetch('/api/twitter', {
+    const endpoint = params.tweet_ids ? '/twitter/tweets' : '/api/twitter'
+    const body = params.tweet_ids ? { tweet_ids: params.tweet_ids } : params
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        '@': params['@'],
-        username: params.username,
-        maxItems: params.maxItems,
-        since: params.since,
-        until: params.until,
-        includeReplies: params.includeReplies,
-        twitterContent: params.twitterContent,
-        tweet_ids: params.tweet_ids,
-        tweets: params.tweets,
-        page: params.page
-      })
+      body: JSON.stringify(body)
     })
 
     if (!response.ok) {
