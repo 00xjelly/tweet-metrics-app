@@ -32,7 +32,7 @@ export type MetricsParams = {
   '@'?: string | string[]
   username?: string | string[]
   maxItems?: number
-  tweet_ids?: string[]
+  urls?: string[]  // Added for post search
   since?: string
   until?: string
   includeReplies?: boolean
@@ -40,6 +40,8 @@ export type MetricsParams = {
 }
 
 export async function analyzeMetrics(params: MetricsParams) {
+  console.log('Analyzing metrics with params:', params)
+
   try {
     const response = await fetch('/api/twitter', {
       method: 'POST',
@@ -51,10 +53,16 @@ export async function analyzeMetrics(params: MetricsParams) {
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('API Response Error:', errorText)
       throw new Error(`API request failed: ${errorText}`)
     }
 
     const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown error occurred')
+    }
+
     return result
   } catch (error) {
     console.error('Error analyzing metrics:', error)
