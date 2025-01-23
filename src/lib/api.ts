@@ -1,24 +1,9 @@
-export type Tweet = {
-  id: string
-  text: string
-  url: string
-  author: string
-  isReply: boolean
-  isQuote: boolean
-  createdAt: string
-  metrics: {
-    likes: number
-    replies: number
-    retweets: number
-    impressions: number
-  }
-}
-
 export type MetricsParams = {
   '@'?: string | string[]
   username?: string | string[]
   maxItems?: number
   urls?: string[]
+  tweet_ids?: string[] // Add this line
   since?: string
   until?: string
   includeReplies?: boolean
@@ -42,7 +27,8 @@ export async function analyzeMetrics(params: MetricsParams) {
         until: params.until,
         includeReplies: params.includeReplies,
         twitterContent: params.twitterContent,
-        urls: params.urls
+        urls: params.urls,
+        tweet_ids: params.tweet_ids // Add this line
       })
     })
 
