@@ -3,75 +3,103 @@ import { NextResponse } from 'next/server'
 export const runtime = 'edge'
 
 export async function POST(req: Request) {
+  const API_KEY = process.env.NEXT_PUBLIC_TWITTER_API_KEY
+  if (!API_KEY) {
+    return NextResponse.json({
+      success: false,
+      error: 'API key not configured'
+    }, { status: 500 })
+  }
+
   try {
     const body = await req.json()
-    const apiKey = process.env.NEXT_PUBLIC_TWITTER_API_KEY
+    
+    // Handle post search using tweets endpoint
+    if (body.urls) {
+      // Extract tweet IDs from URLs
+      const tweetIds = body.urls.map((url: string) => {
+        const matches = url.match(/status\/(\d+)/)
+        return matches ? matches[1] : null
+      }).filter(Boolean)
 
-    if (!apiKey) {
-      console.error('API key missing:', process.env)
-      throw new Error('Twitter API key not configured')
-    }
+      if (tweetIds.length === 0) {
+        throw new Error('No valid tweet IDs found in URLs')
+      }
 
-    if (body.tweet_ids) {
       const response = await fetch(
-        `https://api.twitterapi.io/twitter/tweets?tweet_ids=${body.tweet_ids.join(',')}`, 
+        `https://api.twitterapi.io/twitter/tweets?tweet_ids=${tweetIds.join(',')}`,
         {
-          method: 'GET',
           headers: {
-            'X-API-Key': apiKey
+            'x-api-key': API_KEY
           }
         }
       )
 
       if (!response.ok) {
-        const error = await response.text()
-        console.error('Twitter API error:', error)
-        throw new Error(`Twitter API error: ${error}`)
+        throw new Error(await response.text())
       }
 
       const data = await response.json()
-      return NextResponse.json(data)
-    } else if (body['@']) {
-      // Profile search
-      const userName = Array.isArray(body['@']) ? body['@'][0] : body['@']
-      
-      const queryParams = new URLSearchParams()
-      queryParams.append('userName', userName)
-      if (body.maxItems) queryParams.append('maxItems', body.maxItems.toString())
-      if (body.since) queryParams.append('since', body.since)
-      if (body.until) queryParams.append('until', body.until)
-      if (body.includeReplies !== undefined) queryParams.append('includeReplies', body.includeReplies.toString())
-      if (body.twitterContent) queryParams.append('twitterContent', body.twitterContent)
+      return NextResponse.json({
+        success: true,
+        data: { posts: data.tweets }
+      })
+    } 
+    // Handle profile search using advanced_search
+    else if (body['@']) {
+      const authors = Array.isArray(body['@']) 
+        ? body['@'].map(a => a?.trim().replace(/^@/, '')).filter(Boolean)
+        : [body['@'].trim().replace(/^@/, '')]
 
-      const response = await fetch(
-        `https://api.twitterapi.io/twitter/user/last_tweets?${queryParams.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'X-API-Key': apiKey
-          }
+      if (authors.length === 0) {
+        throw new Error('No valid usernames provided')
+      }
+
+      const results = await Promise.all(authors.map(async (author) => {
+        const query = [`from:${author}`];
+        if (!body.includeReplies) {
+          query.push('-filter:replies');
         }
-      )
+        if (body.twitterContent?.trim()) {
+          query.push(body.twitterContent.trim());
+        }
+        if (body.since) {
+          query.push(`since:${body.since}`);
+        }
+        if (body.until) {
+          query.push(`until:${body.until}`);
+        }
 
-      if (!response.ok) {
-        const error = await response.text()
-        console.error('Twitter API error:', error)
-        throw new Error(`Twitter API error: ${error}`)
-      }
+        const response = await fetch(
+          `https://api.twitterapi.io/twitter/tweet/advanced_search?query=${encodeURIComponent(query.join(' '))}&queryType=Latest`,
+          {
+            headers: {
+              'x-api-key': API_KEY
+            }
+          }
+        )
 
-      const data = await response.json()
-      return NextResponse.json(data)
-    } else {
-      throw new Error('Invalid request: missing tweet_ids or userName')
+        if (!response.ok) {
+          throw new Error(await response.text())
+        }
+
+        const data = await response.json()
+        return data.tweets || []
+      }))
+
+      return NextResponse.json({
+        success: true,
+        data: { posts: results.flat().slice(0, body.maxItems || 50) }
+      })
     }
+
+    throw new Error('Invalid request parameters')
+
   } catch (error) {
-    console.error('Twitter API error:', error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch data from Twitter API' 
-      },
-      { status: 500 }
-    )
+    console.error('API Error:', error)
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred'
+    }, { status: 500 })
   }
 }
