@@ -98,6 +98,7 @@ export function PostSearchForm() {
 
       const results = await processBatch({
         ids: tweetIds,
+        type: 'tweets',
         processingCallback: (current, total) => {
           setProcessingStatus(`Processing batch ${current}/${total}`);
         },
