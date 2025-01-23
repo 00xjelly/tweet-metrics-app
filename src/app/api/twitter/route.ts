@@ -5,7 +5,6 @@ export const runtime = 'edge'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    // Hardcoding for testing - replace with env var in production
     const apiKey = process.env.NEXT_PUBLIC_TWITTER_API_KEY
 
     if (!apiKey) {
@@ -32,14 +31,16 @@ export async function POST(req: Request) {
 
       const data = await response.json()
       return NextResponse.json(data)
-    } else {
+    } else if (body['@']) {
+      // Profile search
+      const userName = Array.isArray(body['@']) ? body['@'][0] : body['@']
+      
       const queryParams = new URLSearchParams()
-      if (body['@']) queryParams.append('@', Array.isArray(body['@']) ? body['@'].join(',') : body['@'])
-      if (body.username) queryParams.append('username', Array.isArray(body.username) ? body.username.join(',') : body.username)
+      queryParams.append('userName', userName)
       if (body.maxItems) queryParams.append('maxItems', body.maxItems.toString())
       if (body.since) queryParams.append('since', body.since)
       if (body.until) queryParams.append('until', body.until)
-      if (body.includeReplies) queryParams.append('includeReplies', body.includeReplies.toString())
+      if (body.includeReplies !== undefined) queryParams.append('includeReplies', body.includeReplies.toString())
       if (body.twitterContent) queryParams.append('twitterContent', body.twitterContent)
 
       const response = await fetch(
@@ -60,6 +61,8 @@ export async function POST(req: Request) {
 
       const data = await response.json()
       return NextResponse.json(data)
+    } else {
+      throw new Error('Invalid request: missing tweet_ids or userName')
     }
   } catch (error) {
     console.error('Twitter API error:', error)
