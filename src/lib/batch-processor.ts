@@ -6,9 +6,10 @@ type BatchProcessorParams = {
   ids: string[]
   processingCallback: (current: number, total: number) => void
   params: Omit<MetricsParams, 'tweet_ids' | '@'>
+  type: 'tweets' | 'profiles'
 }
 
-export async function processBatch({ ids, processingCallback, params }: BatchProcessorParams) {
+export async function processBatch({ ids, processingCallback, params, type }: BatchProcessorParams) {
   const results: Tweet[] = []
   const totalBatches = Math.ceil(ids.length / BATCH_SIZE)
 
@@ -20,7 +21,7 @@ export async function processBatch({ ids, processingCallback, params }: BatchPro
     
     const response = await analyzeMetrics({
       ...params,
-      tweet_ids: batchIds
+      ...(type === 'tweets' ? { tweet_ids: batchIds } : { '@': batchIds })
     })
 
     if (!response.success) {
@@ -29,6 +30,7 @@ export async function processBatch({ ids, processingCallback, params }: BatchPro
 
     results.push(...response.data.posts)
     
+    // Add delay between batches to prevent rate limiting
     if (currentBatch < totalBatches) {
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
