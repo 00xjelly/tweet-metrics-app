@@ -12,13 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { analyzeMetrics } from "@/lib/api"
-import { extractTweetId } from "@/lib/utils"
 import Papa from 'papaparse'
 
 const postSearchSchema = z.object({
   urls: z.string().min(1, "Please enter at least one URL"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  includeReplies: z.boolean().default(false)
 })
 
 const profileFormSchema = z.object({
@@ -124,9 +124,11 @@ export function SearchMetricsForm() {
           return;
         }
 
+        // Set the URLs in the form
         postForm.setValue('urls', urlList.join('\n'));
         setError(null);
         
+        // Reset file input
         if (event.target) {
           event.target.value = '';
         }
@@ -137,6 +139,7 @@ export function SearchMetricsForm() {
       },
     });
   };
+
   async function onProfileSubmit(values: ProfileFormType) {
     setIsLoading(true)
     setError(null)
@@ -182,28 +185,26 @@ export function SearchMetricsForm() {
       const urls = values.urls.split('\n')
         .map(url => url.trim())
         .filter(Boolean)
-        .filter(isValidPostUrl);
+        .filter(isValidPostUrl)
 
       if (urls.length === 0) {
         throw new Error('No valid post URLs found')
       }
 
-      // Extract tweet IDs from URLs
-      const tweetIds = urls
-        .map(url => extractTweetId(url))
-        .filter((id): id is string => id !== null);
-
-      const response = await analyzeMetrics({
-        tweet_ids: tweetIds,
-        since: values.startDate || undefined,
-        until: values.endDate || undefined
-      });
-
-      if (!response.success) {
-        throw new Error(response.error)
+      // Process each URL individually
+      for (const url of urls) {
+        const response = await analyzeMetrics({
+          urls: [url],
+          since: values.startDate || undefined,
+          until: values.endDate || undefined,
+          includeReplies: values.includeReplies
+        })
+        
+        if (!response.success) {
+          throw new Error(`Failed to process URL ${url}: ${response.error}`)
+        }
       }
 
-      setResults(response.data.posts)
       router.push('/results')
     } catch (error) {
       console.error('Error analyzing posts:', error)
@@ -228,12 +229,13 @@ export function SearchMetricsForm() {
     }), [])
   })
 
-  const postForm = useForm<z.infer<typeof postSearchSchema>>({    
+  const postForm = useForm<z.infer<typeof postSearchSchema>>({
     resolver: zodResolver(postSearchSchema),
     defaultValues: useMemo(() => ({
       urls: "",
       startDate: "",
-      endDate: ""
+      endDate: "",
+      includeReplies: false
     }), [])
   })
 
@@ -250,7 +252,182 @@ export function SearchMetricsForm() {
         </TabsTrigger>
       </TabsList>
 
-      {/* Profile tab content remains exactly the same */}
+      <TabsContent value="profile" className="mt-4">
+        <Form {...profileForm}>
+          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+            <FormField
+              control={profileForm.control}
+              name="@"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>X Username(s)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g. user1, user2" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mentioned User Filter</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Filter by mentioned user" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="csvFile"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upload CSV</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleProfileCsvUpload}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {csvUrls.length > 0 && (
+              <div className="text-sm text-gray-600">
+                Found {csvUrls.length} valid Twitter/X profile URLs
+              </div>
+            )}
+
+            <FormField
+              control={profileForm.control}
+              name="maxItems"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Maximum Items</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1} 
+                      max={200} 
+                      {...field} 
+                      onChange={e => field.onChange(parseInt(e.target.value))} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="twitterContent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content Filter</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Filter by keywords or content" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={profileForm.control}
+              name="includeReplies"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">Include Replies</FormLabel>
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={profileForm.control}
+                name="dateRange.since"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={profileForm.control}
+                name="dateRange.until"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Analyze Profiles
+                </>
+              )}
+            </Button>
+          </form>
+        </Form>
+      </TabsContent>
 
       <TabsContent value="post" className="mt-4">
         <Form {...postForm}>
@@ -290,6 +467,24 @@ export function SearchMetricsForm() {
                 )}
               />
             </div>
+
+            <FormField
+              control={postForm.control}
+              name="includeReplies"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">Include Replies</FormLabel>
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={postForm.control}
