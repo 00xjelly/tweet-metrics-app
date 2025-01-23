@@ -41,39 +41,21 @@ export type MetricsParams = {
 
 export async function analyzeMetrics(params: MetricsParams) {
   try {
-    if (params.tweet_ids) {
-      const response = await fetch('https://api.twitterapi.io/twitter/tweets?tweet_ids=' + params.tweet_ids.join(','), {
-        method: 'GET',
-        headers: {
-          'X-API-Key': process.env.TWITTER_API_KEY || ''
-        }
-      })
+    const response = await fetch('/api/twitter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API request failed: ${errorText}`)
-      }
-
-      const result = await response.json()
-      return result
-    } else {
-      // Profile search endpoint remains unchanged
-      const response = await fetch('/api/twitter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(params)
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API request failed: ${errorText}`)
-      }
-
-      const result = await response.json()
-      return result
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`API request failed: ${errorText}`)
     }
+
+    const result = await response.json()
+    return result
   } catch (error) {
     console.error('Error analyzing metrics:', error)
     return {
