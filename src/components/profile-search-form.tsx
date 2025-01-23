@@ -10,7 +10,7 @@ import { useMetrics } from "@/context/metrics-context"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { analyzeMetrics } from "@/lib/api"
+import { processBatch } from "@/lib/batch-processor"
 import Papa from 'papaparse'
 
 const profileFormSchema = z.object({
@@ -38,6 +38,7 @@ export function ProfileSearchForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [csvUrls, setCsvUrls] = useState<string[]>([])
+  const [processingStatus, setProcessingStatus] = useState<string>('')
 
   const isTwitterUrl = useCallback((url: string) => {
     try {
@@ -83,6 +84,7 @@ export function ProfileSearchForm() {
   async function onSubmit(values: ProfileFormType) {
     setIsLoading(true)
     setError(null)
+    setProcessingStatus('')
     
     try {
       const authors = [...(values['@']?.split(',').map(s => s.trim()).filter(Boolean) || []), ...csvUrls]
@@ -92,28 +94,30 @@ export function ProfileSearchForm() {
         return
       }
 
-      const response = await analyzeMetrics({
-        '@': authors,
-        username: values.username,
-        maxItems: values.maxItems,
-        since: values.dateRange?.since,
-        until: values.dateRange?.until,
-        includeReplies: values.includeReplies,
-        twitterContent: values.twitterContent || undefined
+      const results = await processBatch({
+        ids: authors,
+        type: 'profiles',
+        processingCallback: (current, total) => {
+          setProcessingStatus(`Processing batch ${current}/${total}`)
+        },
+        params: {
+          username: values.username,
+          maxItems: values.maxItems,
+          since: values.dateRange?.since,
+          until: values.dateRange?.until,
+          includeReplies: values.includeReplies,
+          twitterContent: values.twitterContent || undefined
+        }
       })
-      
-      if (!response.success) {
-        setError(response.error)
-        return
-      }
 
-      setResults(response.data.posts)
+      setResults(results)
       router.push('/results')
     } catch (error) {
       console.error('Error analyzing profiles:', error)
-      setError('Error processing request')
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setIsLoading(false)
+      setProcessingStatus('')
     }
   }
 
@@ -289,6 +293,12 @@ export function ProfileSearchForm() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded">
             {error}
+          </div>
+        )}
+
+        {processingStatus && (
+          <div className="text-sm text-gray-600">
+            {processingStatus}
           </div>
         )}
 
