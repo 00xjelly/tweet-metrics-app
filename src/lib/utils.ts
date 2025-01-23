@@ -7,9 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export const extractTweetId = (url: string): string | null => {
   try {
-    const match = url.match(/\/status\/(\d+)/);
-    return match ? match[1] : null;
+    // Extract only numeric ID after /status/
+    const match = url.match(/\/status\/([0-9]+)/)
+    return match ? match[1] : null
   } catch {
-    return null;
+    return null
   }
-};
+}
