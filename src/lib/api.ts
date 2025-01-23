@@ -43,30 +43,53 @@ export async function analyzeMetrics(params: MetricsParams) {
   console.log('Analyzing metrics with params:', params)
 
   try {
-    const endpoint = params.tweet_ids ? '/twitter/tweets' : '/api/twitter'
-    const body = params.tweet_ids ? { tweet_ids: params.tweet_ids } : params
+    if (params.tweet_ids) {
+      const url = new URL('/twitter/tweets', window.location.origin)
+      url.searchParams.append('tweet_ids', params.tweet_ids.join(','))
+      
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    })
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Response Error:', errorText)
+        throw new Error(`API request failed: ${errorText}`)
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('API Response Error:', errorText)
-      throw new Error(`API request failed: ${errorText}`)
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown error occurred')
+      }
+
+      return result
+    } else {
+      const response = await fetch('/api/twitter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Response Error:', errorText)
+        throw new Error(`API request failed: ${errorText}`)
+      }
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown error occurred')
+      }
+
+      return result
     }
-
-    const result = await response.json()
-
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown error occurred')
-    }
-
-    return result
   } catch (error) {
     console.error('Error analyzing metrics:', error)
     return {
