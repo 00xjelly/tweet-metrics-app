@@ -19,6 +19,9 @@ export type MetricsParams = {
   username?: string | string[]
   maxItems?: number
   urls?: string[]
+  tweet_ids?: string[]
+  tweets?: string[]
+  page?: number
   since?: string
   until?: string
   includeReplies?: boolean
@@ -42,7 +45,9 @@ export async function analyzeMetrics(params: MetricsParams) {
         until: params.until,
         includeReplies: params.includeReplies,
         twitterContent: params.twitterContent,
-        urls: params.urls
+        tweet_ids: params.tweet_ids,
+        tweets: params.tweets,
+        page: params.page
       })
     })
 
