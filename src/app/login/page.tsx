@@ -22,7 +22,7 @@ export default function LoginPage() {
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
           providers={['google']}
-          redirectTo="http://localhost:3000/auth/callback"
+          redirectTo="https://tjljqzqydgckekzzkpoa.supabase.co/auth/v1/callback"
           onlyThirdPartyProviders
         />
       </Card>
