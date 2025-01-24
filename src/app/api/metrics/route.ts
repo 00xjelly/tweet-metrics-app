@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 
 const BASE_API_URL = 'https://api.twitterapi.io/twitter'
 
+export const runtime = 'edge' // Add this for better performance
+export const maxDuration = 300 // Set maximum duration to 300 seconds
+
 async function* fetchUserTweets(author: string, API_KEY: string, maxItems: number, config: any) {
   const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`);
   const query = [`from:${author}`];
@@ -27,50 +30,67 @@ async function* fetchUserTweets(author: string, API_KEY: string, maxItems: numbe
   
   let cursor = "";
   let fetched = 0;
+  let retryCount = 0;
+  const maxRetries = 3;
 
   while (fetched < maxItems) {
     if (cursor) {
       apiUrl.searchParams.set('cursor', cursor);
     }
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        'x-api-key': API_KEY
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'x-api-key': API_KEY
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${await response.text()}`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${await response.text()}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.tweets?.length) break;
-    
-    for (const tweet of data.tweets) {
-      if (fetched >= maxItems) break;
+      const data = await response.json();
       
-      yield {
-        id: tweet.id,
-        text: tweet.text,
-        url: tweet.url,
-        author: tweet.author?.userName,
-        isReply: tweet.isReply,
-        isQuote: !!tweet.quoted_tweet,
-        createdAt: tweet.createdAt,
-        metrics: {
-          likes: tweet.likeCount || 0,
-          replies: tweet.replyCount || 0,
-          retweets: tweet.retweetCount || 0,
-          impressions: tweet.viewCount || 0
-        }
-      };
+      if (!data.tweets?.length) break;
       
-      fetched++;
+      for (const tweet of data.tweets) {
+        if (fetched >= maxItems) break;
+        
+        yield {
+          id: tweet.id,
+          text: tweet.text,
+          url: tweet.url,
+          author: tweet.author?.userName,
+          isReply: tweet.isReply,
+          isQuote: !!tweet.quoted_tweet,
+          createdAt: tweet.createdAt,
+          metrics: {
+            likes: tweet.likeCount || 0,
+            replies: tweet.replyCount || 0,
+            retweets: tweet.retweetCount || 0,
+            impressions: tweet.viewCount || 0
+          }
+        };
+        
+        fetched++;
+      }
+      
+      if (!data.has_next_page || !data.next_cursor) break;
+      cursor = data.next_cursor;
+      retryCount = 0; // Reset retry count on success
+    } catch (error) {
+      console.error(`Error fetching tweets for ${author}:`, error);
+      if (retryCount >= maxRetries) throw error;
+      retryCount++;
+      await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      continue;
     }
-    
-    if (!data.has_next_page || !data.next_cursor) break;
-    cursor = data.next_cursor;
   }
 }
 
@@ -109,25 +129,22 @@ export async function POST(request: Request) {
     } = body
 
     if (urls && urls.length > 0) {
-      // Extract tweet IDs from URLs
-      const tweetIds = urls.map((url: string) => {
-        const matches = url.match(/status\/(\d+)/)
-        return matches ? matches[1] : null
-      }).filter(Boolean)
+      const urlQuery = urls.map(url => `url:${url}`).join(' OR ')
+      const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`)
+      apiUrl.searchParams.set('query', urlQuery)
+      apiUrl.searchParams.set('queryType', 'Latest')
 
-      if (tweetIds.length === 0) {
-        throw new Error('No valid tweet IDs found in URLs')
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-      // Use the tweets endpoint for direct post lookup
-      const response = await fetch(
-        `${BASE_API_URL}/tweets?tweet_ids=${tweetIds.join(',')}`,
-        {
-          headers: {
-            'x-api-key': API_KEY
-          }
-        }
-      );
+      const response = await fetch(apiUrl, {
+        headers: {
+          'x-api-key': API_KEY
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`API request failed: ${await response.text()}`);
@@ -176,17 +193,19 @@ export async function POST(request: Request) {
       until
     };
 
-    // Process all users concurrently
-    const userPromises = cleanAuthors.map(author => 
-      processUser(author, API_KEY, config)
-    );
-    
-    const results = await Promise.all(userPromises);
-    const allTweets = results.flat();
+    // Process all users concurrently but with rate limiting
+    const results = [];
+    for (const author of cleanAuthors) {
+      const tweets = await processUser(author, API_KEY, config);
+      results.push(...tweets);
+      if (cleanAuthors.indexOf(author) < cleanAuthors.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay between users
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      data: { posts: allTweets }
+      data: { posts: results }
     });
 
   } catch (error) {
