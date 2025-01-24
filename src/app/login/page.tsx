@@ -4,8 +4,27 @@ import { Card } from '@/components/ui/card'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '@/lib/supabase/client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    // Handle hash-based auth response
+    const handleHashBasedResponse = async () => {
+      const hash = window.location.hash
+      if (hash && hash.includes('access_token')) {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (session && !error) {
+          router.push('/')
+        }
+      }
+    }
+
+    handleHashBasedResponse()
+  }, [router])
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-6">
@@ -20,7 +39,7 @@ export default function LoginPage() {
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
           providers={['google']}
-          redirectTo={`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`}
+          onlyThirdPartyProviders
         />
       </Card>
     </div>
