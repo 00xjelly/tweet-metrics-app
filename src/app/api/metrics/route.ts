@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 
 const BASE_API_URL = 'https://api.twitterapi.io/twitter'
 
-export const runtime = 'edge' // Add this for better performance
-export const maxDuration = 300 // Set maximum duration to 300 seconds
+export const runtime = 'edge'
+export const maxDuration = 300
 
 async function* fetchUserTweets(author: string, API_KEY: string, maxItems: number, config: any) {
   const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`);
@@ -40,7 +40,7 @@ async function* fetchUserTweets(author: string, API_KEY: string, maxItems: numbe
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -83,7 +83,7 @@ async function* fetchUserTweets(author: string, API_KEY: string, maxItems: numbe
       
       if (!data.has_next_page || !data.next_cursor) break;
       cursor = data.next_cursor;
-      retryCount = 0; // Reset retry count on success
+      retryCount = 0;
     } catch (error) {
       console.error(`Error fetching tweets for ${author}:`, error);
       if (retryCount >= maxRetries) throw error;
@@ -125,33 +125,26 @@ export async function POST(request: Request) {
       includeReplies = false,
       since,
       until,
-      urls
+      tweet_ids // Add this to handle post search
     } = body
 
-    if (urls && urls.length > 0) {
-      const urlQuery = urls.map(url => `url:${url}`).join(' OR ')
-      const apiUrl = new URL(`${BASE_API_URL}/tweet/advanced_search`)
-      apiUrl.searchParams.set('query', urlQuery)
-      apiUrl.searchParams.set('queryType', 'Latest')
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'x-api-key': API_KEY
-        },
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
+    // Handle post search
+    if (tweet_ids && tweet_ids.length > 0) {
+      const response = await fetch(
+        `${BASE_API_URL}/tweets?tweet_ids=${tweet_ids.join(',')}`,
+        {
+          headers: {
+            'x-api-key': API_KEY
+          }
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`API request failed: ${await response.text()}`);
       }
 
       const data = await response.json();
-      const tweets = data.tweets.slice(0, maxItems).map((tweet: any) => ({
+      const tweets = data.tweets.map((tweet: any) => ({
         id: tweet.id,
         text: tweet.text,
         url: tweet.url,
@@ -173,16 +166,17 @@ export async function POST(request: Request) {
       });
     }
 
-    const cleanAuthors = Array.isArray(author) 
-      ? author.map(a => a?.trim().replace(/^@/, '')).filter(Boolean)
-      : author ? [author.trim().replace(/^@/, '')] : []
-
-    if (cleanAuthors.length === 0) {
+    // Handle profile search
+    if (!author) {
       return NextResponse.json({
         success: false,
         error: 'At least one author username is required'
       }, { status: 400 })
     }
+
+    const cleanAuthors = Array.isArray(author) 
+      ? author.map(a => a?.trim().replace(/^@/, '')).filter(Boolean)
+      : [author.trim().replace(/^@/, '')]
 
     const config = {
       username,
@@ -199,7 +193,7 @@ export async function POST(request: Request) {
       const tweets = await processUser(author, API_KEY, config);
       results.push(...tweets);
       if (cleanAuthors.indexOf(author) < cleanAuthors.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay between users
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
