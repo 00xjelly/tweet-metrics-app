@@ -32,7 +32,7 @@ export type MetricsParams = {
   '@'?: string | string[]
   username?: string | string[]
   maxItems?: number
-  urls?: string[]  // Added for post search
+  urls?: string[]
   since?: string
   until?: string
   includeReplies?: boolean
@@ -43,7 +43,7 @@ export async function analyzeMetrics(params: MetricsParams) {
   console.log('Analyzing metrics with params:', params)
 
   try {
-    const response = await fetch('/api/twitter', {
+    const response = await fetch('/api/metrics', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
