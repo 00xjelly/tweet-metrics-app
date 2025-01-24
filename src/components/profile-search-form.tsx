@@ -54,31 +54,49 @@ export function ProfileSearchForm() {
   }, [])
 
   const handleCsvUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const text = await file.text()
-    Papa.parse(text, {
-      complete: (results) => {
-        const twitterUrls = results.data
-          .flat()
-          .map(String)
-          .map(s => s.trim())
-          .filter(s => s.length > 0)
-          .filter(isTwitterUrl)
+    try {
+      const text = await file.text();
+      Papa.parse(text, {
+        skipEmptyLines: true,
+        complete: (results) => {
+          const twitterUrls = results.data
+            .flat()
+            .map(String)
+            .map(s => s.trim())
+            .filter(s => s.length > 0)
+            .filter(isTwitterUrl)
 
-        if (twitterUrls.length === 0) {
-          setError('No valid Twitter/X URLs found in the CSV')
-          return
+          if (twitterUrls.length === 0) {
+            setError('No valid Twitter/X URLs found in the CSV');
+            return;
+          }
+          
+          setCsvUrls(twitterUrls);
+          setError(null);
+
+          // Clear the file input
+          if (event.target) {
+            event.target.value = '';
+          }
+        },
+        error: (error) => {
+          setError('Error parsing CSV file');
+          console.error('CSV parsing error:', error);
+          if (event.target) {
+            event.target.value = '';
+          }
         }
-        
-        setCsvUrls(twitterUrls)
-      },
-      error: (error) => {
-        setError('Error parsing CSV file')
-        console.error('CSV parsing error:', error)
+      });
+    } catch (error) {
+      console.error('Error reading file:', error);
+      setError('Error reading CSV file');
+      if (event.target) {
+        event.target.value = '';
       }
-    })
+    }
   }, [isTwitterUrl])
 
   async function onSubmit(values: ProfileFormType) {
