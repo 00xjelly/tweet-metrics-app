@@ -25,9 +25,8 @@ const profileFormSchema = z.object({
     until: z.string().optional()
   }).optional()
 }).refine((data) => {
-  // Either @ field should be filled OR csvUrls should be present, not both
   const hasUsername = data['@'] && data['@'].trim().length > 0;
-  return !hasUsername; // Returns true if username is empty (allowing CSV)
+  return !hasUsername;
 }, {
   message: "Please provide either usernames OR a CSV file, not both"
 })
@@ -60,11 +59,23 @@ export function ProfileSearchForm() {
     }
   }, [])
 
+  const extractUsername = (url: string): string => {
+    try {
+      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
+      const parts = cleanUrl.split('/');
+      if (parts.length >= 2) {
+        return parts[1].split('?')[0].split('#')[0];
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  };
+
   const handleCsvUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Clear username field if it exists
     if (form.getValues('@')) {
       form.setValue('@', '');
     }
@@ -89,7 +100,6 @@ export function ProfileSearchForm() {
           setCsvUrls(twitterUrls);
           setError(null);
 
-          // Clear the file input
           if (event.target) {
             event.target.value = '';
           }
@@ -119,9 +129,9 @@ export function ProfileSearchForm() {
     try {
       let authors: string[] = [];
       
-      // Handle CSV URLs
+      // Handle CSV URLs - extract usernames from URLs
       if (csvUrls.length > 0) {
-        authors = csvUrls;
+        authors = csvUrls.map(url => extractUsername(url)).filter(username => username.length > 0);
       } 
       // Handle username input
       else if (values['@']) {
@@ -193,7 +203,7 @@ export function ProfileSearchForm() {
                     onChange={(e) => {
                       field.onChange(e);
                       if (e.target.value) {
-                        clearCsvUrls(); // Clear CSV if username is being entered
+                        clearCsvUrls();
                       }
                     }}
                     disabled={csvUrls.length > 0}
