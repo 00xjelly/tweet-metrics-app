@@ -18,6 +18,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/', requestUrl.origin))
   } catch (error) {
     console.error('Error in auth callback:', error)
-    return NextResponse.redirect(new URL('/auth/error', request.url))
+    return NextResponse.redirect(new URL('/error', requestUrl.origin))
   }
 }
