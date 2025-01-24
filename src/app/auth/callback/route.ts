@@ -1,6 +1,6 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,10 +15,9 @@ export async function GET(request: Request) {
       await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // URL to redirect to after sign in process completes
-    return NextResponse.redirect(new URL('/', requestUrl.origin))
+    return NextResponse.redirect(requestUrl.origin)
   } catch (error) {
-    console.error('Auth callback error:', error)
-    return NextResponse.redirect(new URL('/auth/error', request.url))
+    console.error('Error in auth callback:', error)
+    return NextResponse.redirect(`${request.url}/auth/error`)
   }
 }

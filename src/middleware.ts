@@ -6,20 +6,23 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  // Add your protected routes here
+  const protectedPaths = ['/dashboard', '/saved-searches']
+  const isProtectedRoute = protectedPaths.some((path) =>
+    req.nextUrl.pathname.startsWith(path)
+  )
+
+  if (isProtectedRoute && !session) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
 
   return res
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (public directory)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
