@@ -42,38 +42,51 @@ export function PostSearchForm() {
     }
   };
 
-  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      skipEmptyLines: true,
-      complete: (results) => {
-        const urlList = results.data
-          .flat()
-          .filter(Boolean)
-          .map(String)
-          .map(url => url.trim())
-          .filter(url => url.length > 0)
-          .filter(isValidPostUrl);
+    try {
+      const text = await file.text();
+      Papa.parse(text, {
+        skipEmptyLines: true,
+        complete: (results) => {
+          const urlList = results.data
+            .flat()
+            .filter(Boolean)
+            .map(String)
+            .map(url => url.trim())
+            .filter(url => url.length > 0)
+            .filter(isValidPostUrl);
 
-        if (urlList.length === 0) {
-          setError('No valid post URLs found in the CSV');
-          return;
-        }
+          if (urlList.length === 0) {
+            setError('No valid post URLs found in the CSV');
+            return;
+          }
 
-        form.setValue('urls', urlList.join('\n'));
-        setError(null);
-        
-        if (event.target) {
-          event.target.value = '';
-        }
-      },
-      error: (error) => {
-        console.error('Error parsing CSV:', error);
-        setError('Error parsing CSV file');
-      },
-    });
+          form.setValue('urls', urlList.join('\n'));
+          setError(null);
+          
+          // Clear the file input
+          if (event.target) {
+            event.target.value = '';
+          }
+        },
+        error: (error) => {
+          console.error('Error parsing CSV:', error);
+          setError('Error parsing CSV file');
+          if (event.target) {
+            event.target.value = '';
+          }
+        },
+      });
+    } catch (error) {
+      console.error('Error reading file:', error);
+      setError('Error reading CSV file');
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
   };
 
   async function onSubmit(values: z.infer<typeof postSearchSchema>) {
