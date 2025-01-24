@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Search, Upload, Loader2 } from 'lucide-react'
+import { Search, Upload, Loader2, X } from 'lucide-react'
 import { useState, useCallback } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
@@ -25,9 +25,11 @@ const profileFormSchema = z.object({
     until: z.string().optional()
   }).optional()
 }).refine((data) => {
-  return data['@'] || data.csvFile
+  // Either @ field should be filled OR csvUrls should be present, not both
+  const hasUsername = data['@'] && data['@'].trim().length > 0;
+  return !hasUsername; // Returns true if username is empty (allowing CSV)
 }, {
-  message: "Please provide either usernames or a CSV file"
+  message: "Please provide either usernames OR a CSV file, not both"
 })
 
 type ProfileFormType = z.infer<typeof profileFormSchema>
@@ -39,6 +41,11 @@ export function ProfileSearchForm() {
   const [error, setError] = useState<string | null>(null)
   const [csvUrls, setCsvUrls] = useState<string[]>([])
   const [processingStatus, setProcessingStatus] = useState<string>('')
+
+  const clearCsvUrls = () => {
+    setCsvUrls([]);
+    setError(null);
+  };
 
   const isTwitterUrl = useCallback((url: string) => {
     try {
@@ -56,6 +63,11 @@ export function ProfileSearchForm() {
   const handleCsvUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Clear username field if it exists
+    if (form.getValues('@')) {
+      form.setValue('@', '');
+    }
 
     try {
       const text = await file.text();
@@ -105,10 +117,20 @@ export function ProfileSearchForm() {
     setProcessingStatus('')
     
     try {
-      const authors = [...(values['@']?.split(',').map(s => s.trim()).filter(Boolean) || []), ...csvUrls]
+      let authors: string[] = [];
+      
+      // Handle CSV URLs
+      if (csvUrls.length > 0) {
+        authors = csvUrls;
+      } 
+      // Handle username input
+      else if (values['@']) {
+        authors = values['@'].split(',').map(s => s.trim()).filter(Boolean);
+      }
       
       if (authors.length === 0) {
-        setError('Please provide at least one username')
+        setError('Please provide at least one username or upload a CSV file')
+        setIsLoading(false)
         return
       }
 
@@ -164,10 +186,30 @@ export function ProfileSearchForm() {
             <FormItem>
               <FormLabel>X Username(s)</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="e.g. user1, user2" 
-                  {...field} 
-                />
+                <div className="relative">
+                  <Input 
+                    placeholder="e.g. user1, user2" 
+                    {...field} 
+                    onChange={(e) => {
+                      field.onChange(e);
+                      if (e.target.value) {
+                        clearCsvUrls(); // Clear CSV if username is being entered
+                      }
+                    }}
+                    disabled={csvUrls.length > 0}
+                  />
+                  {field.value && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                      onClick={() => field.onChange('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -203,7 +245,18 @@ export function ProfileSearchForm() {
                     type="file"
                     accept=".csv"
                     onChange={handleCsvUpload}
+                    disabled={Boolean(form.getValues('@'))}
                   />
+                  {csvUrls.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearCsvUrls}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </FormControl>
               <FormMessage />
@@ -320,7 +373,11 @@ export function ProfileSearchForm() {
           </div>
         )}
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isLoading || (csvUrls.length === 0 && !form.getValues('@'))}
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
