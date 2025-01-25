@@ -1,15 +1,13 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Providers } from './providers'
-import { NavBar } from '@/components/nav-bar'
-
-const inter = Inter({ subsets: ['latin'] })
+import { Metadata } from "next"
+import { Providers } from "./providers"
+import "@/styles/globals.css"
 
 export const metadata: Metadata = {
-  title: 'Tweet Metrics App',
-  description: 'Track and analyze Twitter metrics',
+  title: "Tweet Metrics App",
+  description: "Analyze metrics for tweets and profiles",
 }
+
+export const dynamic = 'force-dynamic'
 
 export default function RootLayout({
   children,
@@ -18,10 +16,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body>
         <Providers>
-          <NavBar />
-          {children}
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
         </Providers>
       </body>
     </html>
