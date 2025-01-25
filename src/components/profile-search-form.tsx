@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { processBatch } from "@/lib/batch-processor"
 import { SelectListDialog } from "@/components/lists/select-list-dialog"
 import Papa from 'papaparse'
+import { isTwitterUrl, extractUsername } from "@/utils/url-validation"
 
 export function ProfileSearchForm() {
   const router = useRouter()
@@ -64,32 +65,6 @@ export function ProfileSearchForm() {
   const clearCsvUrls = () => {
     setCsvUrls([]);
     setError(null);
-  };
-
-  const isTwitterUrl = useCallback((url: string) => {
-    try {
-      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
-      return (
-        (cleanUrl.startsWith('twitter.com/') || cleanUrl.startsWith('x.com/')) &&
-        !cleanUrl.includes('/status/') &&
-        cleanUrl.split('/').length === 2
-      );
-    } catch {
-      return false;
-    }
-  }, [])
-
-  const extractUsername = (url: string): string => {
-    try {
-      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
-      const parts = cleanUrl.split('/');
-      if (parts.length >= 2) {
-        return parts[1].split('?')[0].split('#')[0];
-      }
-      return '';
-    } catch {
-      return '';
-    }
   };
 
   const handleListSelect = (profiles: string[]) => {
@@ -152,7 +127,7 @@ export function ProfileSearchForm() {
         event.target.value = '';
       }
     }
-  }, [isTwitterUrl, form])
+  }, [])
 
   async function onSubmit(values: ProfileFormType) {
     setIsLoading(true)
