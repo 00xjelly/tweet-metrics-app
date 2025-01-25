@@ -1,4 +1,5 @@
-import { Tweet, MetricsParams, analyzeMetrics } from './api'
+import { Tweet, MetricsParams } from '@/types/api';
+import { analyzeMetrics } from './api';
 
 export const BATCH_SIZE = 10
 
