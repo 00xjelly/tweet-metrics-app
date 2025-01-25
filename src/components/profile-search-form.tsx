@@ -14,7 +14,7 @@ import { processBatch } from "@/lib/batch-processor"
 import { SelectListDialog } from "@/components/lists/select-list-dialog"
 import Papa from 'papaparse'
 import { isTwitterUrl, extractUsername } from "@/utils/url-validation"
-import { createProfileFormSchema, ProfileFormType, defaultFormValues } from "@/schemas/profile-form"
+import { createProfileFormSchema, ProfileFormType, defaultFormValues, FormFields } from "@/schemas/profile-form"
 
 export function ProfileSearchForm() {
   const router = useRouter()
@@ -37,15 +37,12 @@ export function ProfileSearchForm() {
   };
 
   const handleListSelect = (profiles: string[]) => {
-    // Extract usernames from profile URLs
     const usernames = profiles
       .map(url => extractUsername(url))
       .filter(username => username.length > 0)
       .join(', ');
 
-    // Set the usernames in the form
-    form.setValue('@', usernames);
-    // Clear any CSV uploads
+    form.setValue('@' as FormFields, usernames);
     clearCsvUrls();
   };
 
