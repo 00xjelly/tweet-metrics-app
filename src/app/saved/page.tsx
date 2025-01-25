@@ -4,7 +4,9 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from '@/components/ui/button'
-import { PlusCircle, RefreshCw, Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
+import { NewSearchDialog } from '@/components/searches/new-search-dialog'
+import { NewListDialog } from '@/components/lists/new-list-dialog'
 
 type SavedSearch = {
   id: string
@@ -27,24 +29,46 @@ export default function SavedPage() {
   const [lists, setLists] = useState<ProfileList[]>([])
   const supabase = createClientComponentClient()
 
+  const fetchData = async () => {
+    const { data: searchesData } = await supabase
+      .from('saved_searches')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    const { data: listsData } = await supabase
+      .from('profile_lists')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (searchesData) setSearches(searchesData)
+    if (listsData) setLists(listsData)
+  }
+
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: searchesData } = await supabase
-        .from('saved_searches')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      const { data: listsData } = await supabase
-        .from('profile_lists')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (searchesData) setSearches(searchesData)
-      if (listsData) setLists(listsData)
-    }
-
     fetchData()
-  }, [supabase])
+  }, [])
+
+  const handleDeleteSearch = async (id: string) => {
+    const { error } = await supabase
+      .from('saved_searches')
+      .delete()
+      .match({ id })
+
+    if (!error) {
+      setSearches(searches.filter(search => search.id !== id))
+    }
+  }
+
+  const handleDeleteList = async (id: string) => {
+    const { error } = await supabase
+      .from('profile_lists')
+      .delete()
+      .match({ id })
+
+    if (!error) {
+      setLists(lists.filter(list => list.id !== id))
+    }
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -59,10 +83,7 @@ export default function SavedPage() {
             <CardTitle>Saved Searches</CardTitle>
             <CardDescription>Your saved Twitter metrics searches</CardDescription>
           </div>
-          <Button variant="secondary">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            New Search
-          </Button>
+          <NewSearchDialog onSearchCreated={fetchData} />
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -92,12 +113,23 @@ export default function SavedPage() {
                       <Button variant="ghost" size="sm" className="mr-2">
                         <RefreshCw className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteSearch(search.id)}
+                      >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </td>
                   </tr>
                 ))}
+                {searches.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No saved searches yet
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -111,10 +143,7 @@ export default function SavedPage() {
             <CardTitle>Profile Lists</CardTitle>
             <CardDescription>Your saved Twitter profile lists</CardDescription>
           </div>
-          <Button variant="secondary">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            New List
-          </Button>
+          <NewListDialog onListCreated={fetchData} />
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -139,12 +168,23 @@ export default function SavedPage() {
                       <Button variant="ghost" size="sm" className="mr-2">
                         <RefreshCw className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteList(list.id)}
+                      >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </td>
                   </tr>
                 ))}
+                {lists.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No profile lists yet
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
