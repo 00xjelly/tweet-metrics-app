@@ -90,7 +90,7 @@ export const useProfileForm = () => {
           setProcessingStatus(`Processing batch ${current}/${total}`);
         },
         params: {
-          '@': values.username,
+          username: values.username,
           maxItems: values.maxItems,
           since: values.dateRange?.since,
           until: values.dateRange?.until,
