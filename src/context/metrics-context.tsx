@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, ReactNode } from "react"
-import type { Tweet } from "@/lib/api"
+import type { Tweet } from "@/types/api"
 
 type MetricsContextType = {
   results: Tweet[]
