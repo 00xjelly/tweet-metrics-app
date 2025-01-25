@@ -1,4 +1,4 @@
-import { Tweet } from '@/lib/api'
+import { Tweet } from '@/types/api'
 import { MessageCircle, Heart, Eye, Repeat2, Quote, Reply } from 'lucide-react'
 
 export function TweetCard({ tweet }: { tweet: Tweet }) {
