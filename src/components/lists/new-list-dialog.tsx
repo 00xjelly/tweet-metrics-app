@@ -34,6 +34,12 @@ export function NewListDialog({ onListCreated }: NewListDialogProps) {
 
     try {
       setIsLoading(true)
+      
+      // First get the current user's ID
+      const { data: { session }, error: authError } = await supabase.auth.getSession()
+      if (authError) throw authError
+      if (!session?.user) throw new Error('Not authenticated')
+
       const profileUrls = urls
         .split('\n')
         .map(url => url.trim())
@@ -44,7 +50,8 @@ export function NewListDialog({ onListCreated }: NewListDialogProps) {
         .insert({
           name,
           profiles: profileUrls,
-          last_analyzed: new Date().toISOString()
+          last_analyzed: new Date().toISOString(),
+          user_id: session.user.id
         })
 
       if (error) throw error
