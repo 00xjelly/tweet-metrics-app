@@ -5,7 +5,7 @@ import { TweetCard } from "@/components/tweet-card"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { Tweet } from "@/lib/api"
+import { Tweet } from "@/types/api"
 
 export default function ResultsPage() {
   const { results } = useMetrics()
