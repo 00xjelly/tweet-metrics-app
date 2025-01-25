@@ -43,6 +43,9 @@ export function ProfileSearchForm() {
     message: "Please provide either usernames OR a CSV file, not both and not neither"
   });
 
+  // Define the type using Zod's inference
+  type ProfileFormType = z.infer<typeof profileFormSchema>;
+
   const form = useForm<ProfileFormType>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
