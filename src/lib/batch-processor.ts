@@ -5,7 +5,7 @@ export const BATCH_SIZE = 10
 type BatchProcessorParams = {
   ids: string[]
   processingCallback: (current: number, total: number) => void
-  params: Omit<MetricsParams, 'tweet_ids' | '@'>
+  params: Omit<MetricsParams, 'tweet_ids'>
   type: 'tweets' | 'profiles'
 }
 
