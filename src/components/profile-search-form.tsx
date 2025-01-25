@@ -49,7 +49,7 @@ export function ProfileSearchForm() {
 
   const isTwitterUrl = useCallback((url: string) => {
     try {
-      const cleanUrl = url.trim().replace(/^https?:\\/\\//, '');
+      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
       return (
         (cleanUrl.startsWith('twitter.com/') || cleanUrl.startsWith('x.com/')) &&
         !cleanUrl.includes('/status/') &&
@@ -62,7 +62,7 @@ export function ProfileSearchForm() {
 
   const extractUsername = (url: string): string => {
     try {
-      const cleanUrl = url.trim().replace(/^https?:\\/\\//, '');
+      const cleanUrl = url.trim().replace(/^https?:\/\//, '');
       const parts = cleanUrl.split('/');
       if (parts.length >= 2) {
         return parts[1].split('?')[0].split('#')[0];
