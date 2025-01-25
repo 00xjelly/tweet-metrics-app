@@ -3,11 +3,11 @@
 import { SearchMetricsForm } from "@/components/search-metrics-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 export default function Home() {
   const [user, setUser] = useState(null)
-  const supabase = createClientComponentClient()
+  const supabase = useMemo(() => createClientComponentClient(), [])
 
   useEffect(() => {
     const checkUser = async () => {
@@ -15,7 +15,7 @@ export default function Home() {
       setUser(session?.user ?? null)
     }
     checkUser()
-  }, [supabase])
+  }, [])
 
   return (
     <div className="container mx-auto py-8">
