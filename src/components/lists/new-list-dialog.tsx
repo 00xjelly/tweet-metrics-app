@@ -44,13 +44,10 @@ export function NewListDialog({ onListCreated }: { onListCreated: () => void }) 
   const handleSubmit = async () => {
     try {
       setIsLoading(true)
-      // Clean and deduplicate URLs using object keys
-      const urlsArray = urls.split('\n')
+      // Clean and deduplicate URLs
+      const uniqueUrls = [...new Set(urls.split('\n')
         .map(url => url.trim())
-        .filter(Boolean)
-      const uniqueUrls = Object.keys(
-        urlsArray.reduce((acc, url) => ({ ...acc, [url]: true }), {})
-      )
+        .filter(Boolean))]
 
       const { error } = await supabase
         .from('profile_lists')
