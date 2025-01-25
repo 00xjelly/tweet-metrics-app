@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Search, Upload, Loader2, X } from 'lucide-react'
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useRouter } from 'next/navigation'
 import { useMetrics } from "@/context/metrics-context"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { processBatch } from "@/lib/batch-processor"
 import { SelectListDialog } from "@/components/lists/select-list-dialog"
 import Papa from 'papaparse'
 import { isTwitterUrl, extractUsername } from "@/utils/url-validation"
+import { createProfileFormSchema, ProfileFormType, defaultFormValues } from "@/schemas/profile-form"
 
 export function ProfileSearchForm() {
   const router = useRouter()
@@ -23,43 +24,11 @@ export function ProfileSearchForm() {
   const [csvUrls, setCsvUrls] = useState<string[]>([])
   const [processingStatus, setProcessingStatus] = useState<string>('')
 
-  const profileFormSchema = z.object({
-    "@": z.string().optional(),
-    twitterContent: z.string().optional(),
-    username: z.string().optional(),
-    csvFile: z.any().optional(),
-    maxItems: z.number().max(200).optional(),
-    includeReplies: z.boolean().default(false),
-    dateRange: z.object({
-      since: z.string().optional(),
-      until: z.string().optional()
-    }).optional()
-  }).refine((data) => {
-    const hasUsername = data['@'] && data['@'].trim().length > 0;
-    const hasCsv = csvUrls.length > 0;
-    
-    // Either username OR CSV, but not both and not neither
-    return (hasUsername && !hasCsv) || (!hasUsername && hasCsv);
-  }, {
-    message: "Please provide either usernames OR a CSV file, not both and not neither"
-  });
-
-  // Define the type using Zod's inference
-  type ProfileFormType = z.infer<typeof profileFormSchema>;
+  const profileFormSchema = useMemo(() => createProfileFormSchema(csvUrls), [csvUrls])
 
   const form = useForm<ProfileFormType>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      "@": "",
-      twitterContent: "",
-      username: "",
-      maxItems: 50,
-      includeReplies: false,
-      dateRange: {
-        since: undefined,
-        until: undefined
-      }
-    }
+    defaultValues: defaultFormValues
   })
 
   const clearCsvUrls = () => {
