@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { Providers } from "./providers"
 import "@/styles/globals.css"
+import { NavBar } from "@/components/nav-bar"
 
 export const metadata: Metadata = {
   title: "Tweet Metrics App",
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body>
         <Providers>
           <div className="min-h-screen bg-background">
+            <NavBar />
             {children}
           </div>
         </Providers>
