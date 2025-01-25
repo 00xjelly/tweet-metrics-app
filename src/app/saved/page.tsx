@@ -1,12 +1,12 @@
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from '@/components/ui/button'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { NewSearchDialog } from '@/components/searches/new-search-dialog'
 import { NewListDialog } from '@/components/lists/new-list-dialog'
+import { deleteList, deleteSearch, fetchSavedData } from './actions'
 
 type SavedSearch = {
   id: string
@@ -27,21 +27,11 @@ type ProfileList = {
 export default function SavedPage() {
   const [searches, setSearches] = useState<SavedSearch[]>([])
   const [lists, setLists] = useState<ProfileList[]>([])
-  const supabase = createClientComponentClient()
 
   const fetchData = async () => {
-    const { data: searchesData } = await supabase
-      .from('saved_searches')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    const { data: listsData } = await supabase
-      .from('profile_lists')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (searchesData) setSearches(searchesData)
-    if (listsData) setLists(listsData)
+    const data = await fetchSavedData()
+    setSearches(data.searches)
+    setLists(data.lists)
   }
 
   useEffect(() => {
@@ -49,25 +39,13 @@ export default function SavedPage() {
   }, [])
 
   const handleDeleteSearch = async (id: string) => {
-    const { error } = await supabase
-      .from('saved_searches')
-      .delete()
-      .match({ id })
-
-    if (!error) {
-      setSearches(searches.filter(search => search.id !== id))
-    }
+    await deleteSearch(id)
+    setSearches(searches.filter(search => search.id !== id))
   }
 
   const handleDeleteList = async (id: string) => {
-    const { error } = await supabase
-      .from('profile_lists')
-      .delete()
-      .match({ id })
-
-    if (!error) {
-      setLists(lists.filter(list => list.id !== id))
-    }
+    await deleteList(id)
+    setLists(lists.filter(list => list.id !== id))
   }
 
   return (
