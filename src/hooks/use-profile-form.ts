@@ -34,7 +34,7 @@ export const useProfileForm = () => {
       .filter(username => username.length > 0)
       .join(', ');
 
-    form.setValue('@' as FormFields, usernames);
+    form.setValue('username', usernames);
     clearCsvUrls();
   }, [form, clearCsvUrls]);
 
