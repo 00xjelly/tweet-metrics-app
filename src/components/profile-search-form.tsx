@@ -42,6 +42,21 @@ export function ProfileSearchForm() {
   const [csvUrls, setCsvUrls] = useState<string[]>([])
   const [processingStatus, setProcessingStatus] = useState<string>('')
 
+  const form = useForm<ProfileFormType>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      "@": "",
+      twitterContent: "",
+      username: "",
+      maxItems: 50,
+      includeReplies: false,
+      dateRange: {
+        since: undefined,
+        until: undefined
+      }
+    }
+  })
+
   const clearCsvUrls = () => {
     setCsvUrls([]);
     setError(null);
@@ -184,21 +199,6 @@ export function ProfileSearchForm() {
       setProcessingStatus('')
     }
   }
-
-  const form = useForm<ProfileFormType>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      "@": "",
-      twitterContent: "",
-      username: "",
-      maxItems: 50,
-      includeReplies: false,
-      dateRange: {
-        since: undefined,
-        until: undefined
-      }
-    }
-  })
 
   return (
     <Form {...form}>
