@@ -27,9 +27,12 @@ const profileFormSchema = z.object({
   }).optional()
 }).refine((data) => {
   const hasUsername = data['@'] && data['@'].trim().length > 0;
-  return !hasUsername;
+  const hasCsv = csvUrls && csvUrls.length > 0;
+  
+  // Either username OR CSV, but not both and not neither
+  return (hasUsername && !hasCsv) || (!hasUsername && hasCsv);
 }, {
-  message: "Please provide either usernames OR a CSV file, not both"
+  message: "Please provide either usernames OR a CSV file, not both and not neither"
 })
 
 type ProfileFormType = z.infer<typeof profileFormSchema>
