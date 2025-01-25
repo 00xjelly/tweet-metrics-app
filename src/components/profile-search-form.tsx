@@ -14,29 +14,6 @@ import { processBatch } from "@/lib/batch-processor"
 import { SelectListDialog } from "@/components/lists/select-list-dialog"
 import Papa from 'papaparse'
 
-const profileFormSchema = z.object({
-  "@": z.string().optional(),
-  twitterContent: z.string().optional(),
-  username: z.string().optional(),
-  csvFile: z.any().optional(),
-  maxItems: z.number().max(200).optional(),
-  includeReplies: z.boolean().default(false),
-  dateRange: z.object({
-    since: z.string().optional(),
-    until: z.string().optional()
-  }).optional()
-}).refine((data) => {
-  const hasUsername = data['@'] && data['@'].trim().length > 0;
-  const hasCsv = csvUrls && csvUrls.length > 0;
-  
-  // Either username OR CSV, but not both and not neither
-  return (hasUsername && !hasCsv) || (!hasUsername && hasCsv);
-}, {
-  message: "Please provide either usernames OR a CSV file, not both and not neither"
-})
-
-type ProfileFormType = z.infer<typeof profileFormSchema>
-
 export function ProfileSearchForm() {
   const router = useRouter()
   const { setResults } = useMetrics()
@@ -44,6 +21,27 @@ export function ProfileSearchForm() {
   const [error, setError] = useState<string | null>(null)
   const [csvUrls, setCsvUrls] = useState<string[]>([])
   const [processingStatus, setProcessingStatus] = useState<string>('')
+
+  const profileFormSchema = z.object({
+    "@": z.string().optional(),
+    twitterContent: z.string().optional(),
+    username: z.string().optional(),
+    csvFile: z.any().optional(),
+    maxItems: z.number().max(200).optional(),
+    includeReplies: z.boolean().default(false),
+    dateRange: z.object({
+      since: z.string().optional(),
+      until: z.string().optional()
+    }).optional()
+  }).refine((data) => {
+    const hasUsername = data['@'] && data['@'].trim().length > 0;
+    const hasCsv = csvUrls.length > 0;
+    
+    // Either username OR CSV, but not both and not neither
+    return (hasUsername && !hasCsv) || (!hasUsername && hasCsv);
+  }, {
+    message: "Please provide either usernames OR a CSV file, not both and not neither"
+  });
 
   const form = useForm<ProfileFormType>({
     resolver: zodResolver(profileFormSchema),
