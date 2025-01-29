@@ -34,7 +34,7 @@ export const useProfileForm = () => {
       .filter(username => username.length > 0)
       .join(', ');
 
-    form.setValue('username', usernames);
+    form.setValue('@', usernames);
     clearCsvUrls();
   }, [form, clearCsvUrls]);
 
@@ -42,8 +42,8 @@ export const useProfileForm = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (form.getValues('username')) {
-      form.setValue('username', '');
+    if (form.getValues('@')) {
+      form.setValue('@', '');
     }
 
     await processCsvFile(file, {
