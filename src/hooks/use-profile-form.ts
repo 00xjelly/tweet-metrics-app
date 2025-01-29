@@ -73,8 +73,8 @@ export const useProfileForm = () => {
       
       if (csvUrls.length > 0) {
         authors = csvUrls.map(url => extractUsername(url)).filter(username => username.length > 0);
-      } else if (values.username) {
-        authors = values.username.split(',').map(s => s.trim()).filter(Boolean);
+      } else if (values['@']) {
+        authors = values['@'].split(',').map(s => s.trim()).filter(Boolean);
       }
       
       if (authors.length === 0) {
@@ -90,7 +90,7 @@ export const useProfileForm = () => {
           setProcessingStatus(`Processing batch ${current}/${total}`);
         },
         params: {
-          username: values.username,
+          '@': values['@'],
           maxItems: values.maxItems,
           since: values.dateRange?.since,
           until: values.dateRange?.until,
