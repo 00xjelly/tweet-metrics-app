@@ -29,12 +29,33 @@ export const useProfileForm = () => {
   }, []);
 
   const handleListSelect = useCallback((profiles: string[]) => {
-    const usernames = profiles
-      .map(url => extractUsername(url))
-      .filter(username => username.length > 0)
-      .join(', ');
+    console.log('Received profiles for processing:', profiles);
+    
+    if (!profiles || profiles.length === 0) {
+      setError('No profiles were selected');
+      return;
+    }
 
-    form.setValue('@', usernames);
+    const usernames = profiles
+      .map(url => {
+        const username = extractUsername(url);
+        console.log(`Processing URL: ${url} -> username: ${username}`);
+        return username;
+      })
+      .filter(username => username.length > 0);
+
+    if (usernames.length === 0) {
+      setError('No valid usernames found in the selected list');
+      return;
+    }
+
+    console.log('Setting usernames:', usernames.join(', '));
+    
+    form.setValue('@', usernames.join(', '), {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true
+    });
     clearCsvUrls();
   }, [form, clearCsvUrls]);
 
